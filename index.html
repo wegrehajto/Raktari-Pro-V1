@@ -6,6 +6,9 @@
 
 <title>Raktár App</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111827">
+
 <style>
 
 body{
@@ -68,6 +71,7 @@ button{
     height:70px;
     background:#22c55e;
     color:black;
+    font-size:22px;
 }
 
 .grayBtn{
@@ -141,6 +145,14 @@ Megint péntek? ❌
 
 let pentek = false;
 
+let today = new Date().toISOString().split("T")[0];
+
+let data = JSON.parse(localStorage.getItem("data") || "{}");
+
+if(!data[today]){
+    data[today] = { tetel:0, karton:0, suly:0 };
+}
+
 let st = 0;
 let sk = 0;
 let sg = 0;
@@ -162,12 +174,18 @@ function hozzaad(){
     const k = Number(document.getElementById("karton").value) || 0;
     const s = Number(document.getElementById("suly").value) || 0;
 
-    if(t === 0 && s === 0) return;
+    if(t === 0 && s === 0 && k === 0) return;
 
     st += t;
     sg += s;
 
     if(pentek) sk += k;
+
+    data[today].tetel += t;
+    data[today].suly += s;
+    data[today].karton += (pentek ? k : 0);
+
+    localStorage.setItem("data", JSON.stringify(data));
 
     document.getElementById("st").innerText = st;
     document.getElementById("sk").innerText = sk;
@@ -185,6 +203,10 @@ function hozzaad(){
     ok.style.display = "block";
 
     setTimeout(()=> ok.style.display = "none", 800);
+}
+
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js');
 }
 
 </script>
