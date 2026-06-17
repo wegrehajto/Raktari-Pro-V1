@@ -184,27 +184,10 @@ function render(){
     document.getElementById("sk").innerText = d.karton;
     document.getElementById("ss").innerText = d.suly;
 
-    let sum = d.tetel + d.karton + d.suly;
-    document.getElementById("sum").innerText = sum;
-
-    let h = "";
-    for(let day in data){
-        if(day === today) continue;
-
-        const x = data[day];
-        let total = x.tetel + x.karton + x.suly;
-
-        h += `
-        <div class="card">
-            <div><b>${day}</b></div>
-            <div>T: ${x.tetel} | K: ${x.karton} | S: ${x.suly}</div>
-            <div><b>Össz: ${total}</b></div>
-        </div>`;
-    }
-
-    document.getElementById("history").innerHTML = h || "Nincs előző adat";
+    document.getElementById("sum").innerText =
+        d.tetel + d.karton + d.suly;
 }
-
+    
 function resetDay(){
 
     if(!confirm("Biztos lezárod a műszakot?")) return;
