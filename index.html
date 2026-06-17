@@ -158,24 +158,29 @@ function togglePentek(){
 
 function add(){
 
-    const t = +document.getElementById("t").value || 0;
-    const k = +document.getElementById("k").value || 0;
-    const s = +document.getElementById("s").value || 0;
+    const t = Number(document.getElementById("t").value) || 0;
+    const k = Number(document.getElementById("k").value) || 0;
+    const s = Number(document.getElementById("s").value) || 0;
 
-    if(!t && !s && !k) return;
+    if(t === 0 && k === 0 && s === 0) return;
 
+    // 📦 mentés
     data[today].tetel += t;
     data[today].karton += pentek ? k : 0;
     data[today].suly += s;
 
     localStorage.setItem("data", JSON.stringify(data));
 
+    // 🧠 UI frissítés CSAK data-ból (EZ A LÉNYEG)
     render();
-    document.getElementById("t").value="";
-    document.getElementById("k").value="";
-    document.getElementById("s").value="";
-}
 
+    // 🧼 input reset
+    document.getElementById("t").value = "";
+    document.getElementById("k").value = "";
+    document.getElementById("s").value = "";
+
+    document.getElementById("t").focus();
+}
 function render(){
 
     const d = data[today];
