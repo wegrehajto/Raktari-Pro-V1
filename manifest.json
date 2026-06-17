@@ -1,0 +1,15 @@
+{
+  "name": "Raktár PRO",
+  "short_name": "Raktár",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#581c87",
+  "theme_color": "#581c87",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
