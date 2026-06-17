@@ -376,6 +376,9 @@ window.onload = function(){
     .innerHTML = "Megint péntek? ❌";
 };
 
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+}
 </script>
 
 </body>
