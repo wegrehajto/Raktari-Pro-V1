@@ -3,151 +3,124 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<title>Raktár Pro</title>
+
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#581c87">
-    
-<title>Raktári Pro V1</title>
 
 <style>
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
-
 body{
+    margin:0;
+    padding:20px;
+    padding-bottom:140px;
     background:#581c87;
     color:white;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    padding:20px;
-    padding-bottom:140px;
 }
 
 .header{
-    background:#2563eb;
-    border-radius:18px;
+    background:#7c3aed;
     padding:18px;
+    border-radius:18px;
+    font-size:22px;
+    font-weight:800;
     text-align:center;
-    font-size:24px;
-    font-weight:700;
     margin-bottom:15px;
 }
 
-.kgCard{
-    background:#6b21a8;
+.kgBox{
+    background:#6d28d9;
     border-radius:18px;
     padding:20px;
-    margin-bottom:15px;
     text-align:center;
-}
-
-.bigKg{
-    font-size:56px;
-    font-weight:800;
-}
-
-.bigKgLabel{
-    color:#9ca3af;
-    margin-top:5px;
-}
-
-.pentekBtn{
-    width:100%;
-    border:none;
-    border-radius:16px;
-    padding:16px;
-    background:#374151;
-    color:white;
-    font-size:18px;
-    font-weight:700;
     margin-bottom:15px;
+}
+
+.kgBig{
+    font-size:60px;
+    font-weight:900;
 }
 
 .card{
-    background:#6b21a8;
+    background:#6d28d9;
     border-radius:18px;
     padding:15px;
-    margin-bottom:15px;
+    margin-bottom:12px;
 }
 
 label{
     display:block;
-    color:#9ca3af;
-    margin-bottom:10px;
-    font-size:14px;
-    font-weight:600;
+    margin-bottom:8px;
+    font-size:13px;
+    opacity:0.8;
 }
 
 input{
     width:100%;
     border:none;
     border-radius:14px;
-    background:#7e22ce;
-    color:white;
-    padding:18px;
+    padding:16px;
     font-size:34px;
+    background:#4c1d95;
+    color:white;
     font-weight:700;
 }
 
-input:focus{
-    outline:none;
+button{
+    width:100%;
+    border:none;
+    border-radius:16px;
+    padding:18px;
+    font-size:20px;
+    font-weight:900;
+}
+
+.saveBtn{
+    position:fixed;
+    bottom:15px;
+    left:15px;
+    right:15px;
+    background:#22c55e;
+    color:black;
+    height:85px;
+    font-size:28px;
+}
+
+.grayBtn{
+    background:#111827;
+    color:white;
+    margin-bottom:10px;
+}
+
+.redBtn{
+    background:#ef4444;
+    color:white;
 }
 
 .stat{
-    background:#6b21a8;
+    background:#6d28d9;
+    padding:15px;
     border-radius:18px;
-    padding:18px;
-    margin-top:10px;
 }
 
-.statRow{
+.row{
     display:flex;
     justify-content:space-between;
-    font-size:22px;
-    margin:8px 0;
+    font-size:20px;
+    margin:6px 0;
 }
 
 .success{
     display:none;
     text-align:center;
-    color:#22c55e;
-    font-size:22px;
-    font-weight:700;
-    margin-bottom:15px;
-}
-
-.saveBtn{
-    position:fixed;
-    left:15px;
-    right:15px;
-    bottom:15px;
-    height:85px;
-    border:none;
-    border-radius:18px;
-    background:#2563eb;
-    color:white;
-    font-size:28px;
+    font-size:20px;
     font-weight:800;
+    color:#22c55e;
 }
 
-.resetBtn{
-    width:100%;
-    border:none;
-    border-radius:16px;
-    background:#dc2626;
-    color:white;
-    padding:16px;
-    font-size:18px;
-    font-weight:700;
-    margin-top:15px;
-}
-
-#kartonBlokk{
-    display:none;
-}
-
-#kartonStat{
+#kartonBox{
     display:none;
 }
 
@@ -156,228 +129,107 @@ input:focus{
 
 <body>
 
-<div class="header">
-📦 Raktári Pro V1
+<div class="header">📦 Raktár PRO</div>
+
+<div class="success" id="ok">✓ MENTVE</div>
+
+<div class="kgBox">
+    <div class="kgBig" id="kgSum">0</div>
+    KG
 </div>
 
-<div id="success" class="success">
-✓ MENTVE
-</div>
-
-<div class="kgCard">
-    <div class="bigKg">
-        <span id="kgOssz">0</span>
-    </div>
-
-    <div class="bigKgLabel">
-        KG MA
-    </div>
-</div>
-
-<button id="pentekBtn" class="pentekBtn" onclick="togglePentek()">
+<button class="grayBtn" onclick="togglePentek()" id="pBtn">
 Megint péntek? ❌
 </button>
 
 <div class="card">
-    <label>TÉTEL</label>
-    <input
-        id="tetel"
-        type="tel"
-        inputmode="numeric"
-        pattern="[0-9]*">
+<label>TÉTEL</label>
+<input id="t" type="tel" inputmode="numeric">
 </div>
 
-<div class="card" id="kartonBlokk">
-    <label>KARTON</label>
-    <input
-        id="karton"
-        type="tel"
-        inputmode="numeric"
-        pattern="[0-9]*">
+<div class="card" id="kartonBox">
+<label>KARTON</label>
+<input id="k" type="tel" inputmode="numeric">
 </div>
 
 <div class="card">
-    <label>SÚLY (KG)</label>
-    <input
-        id="kg"
-        type="tel"
-        inputmode="numeric"
-        pattern="[0-9]*">
+<label>SÚLY</label>
+<input id="kg" type="tel" inputmode="numeric">
 </div>
 
 <div class="stat">
-
-    <div class="statRow">
-        <span>Tétel</span>
-        <span id="tetelOssz">0</span>
-    </div>
-
-    <div class="statRow" id="kartonStat">
-        <span>Karton</span>
-        <span id="kartonOssz">0</span>
-    </div>
-
-    <hr style="margin:12px 0;border-color:#9333ea;">
-
-    <div class="statRow">
-        <strong>Napi egység</strong>
-        <strong id="napiEgyseg">0</strong>
-    </div>
-
+<div class="row">Tétel <span id="st">0</span></div>
+<div class="row">Karton <span id="sk">0</span></div>
+<div class="row"><b>Napi egység</b> <b id="se">0</b></div>
 </div>
 
-<button class="pentekBtn" onclick="osszesites()">
-📊 ÖSSZESÍTÉS
-</button>
+<button class="redBtn" onclick="resetDay()">Új nap</button>
 
-<button class="resetBtn" onclick="ujNap()">
-🗑️ Új nap
-</button>
-
-<button class="saveBtn" onclick="mentes()">
-HOZZÁADÁS
-</button>
+<button class="saveBtn" onclick="add()">HOZZÁADÁS</button>
 
 <script>
+let pentek=false;
 
-let pentekMod = false;
+let st=+localStorage.getItem("st")||0;
+let sk=+localStorage.getItem("sk")||0;
+let sg=+localStorage.getItem("sg")||0;
 
-let osszTetel =
-Number(localStorage.getItem("tetel")) || 0;
+function render(){
+    document.getElementById("st").innerText=st;
+    document.getElementById("sk").innerText=sk;
+    document.getElementById("kgSum").innerText=sg;
 
-let osszKarton =
-Number(localStorage.getItem("karton")) || 0;
-
-let osszKg =
-Number(localStorage.getItem("kg")) || 0;
-
-function frissit(){
-
-    document.getElementById("tetelOssz").textContent =
-    osszTetel;
-
-    document.getElementById("kartonOssz").textContent =
-    osszKarton;
-
-    document.getElementById("kgOssz").textContent =
-    osszKg;
+    let sum = pentek ? (st+sk+sg) : (st+sg);
+    document.getElementById("se").innerText=sum;
 }
 
-frissit();
+render();
 
 function togglePentek(){
+    pentek=!pentek;
 
-    pentekMod = !pentekMod;
+    document.getElementById("kartonBox").style.display=
+    pentek?"block":"none";
 
-    const kartonBlokk =
-    document.getElementById("kartonBlokk");
-
-    const kartonStat =
-    document.getElementById("kartonStat");
-
-    const btn =
-    document.getElementById("pentekBtn");
-
-    if(pentekMod){
-
-        kartonBlokk.style.display = "block";
-        kartonStat.style.display = "flex";
-
-        btn.innerHTML =
-        "Megint péntek? ✅";
-
-    }else{
-
-        kartonBlokk.style.display = "none";
-        kartonStat.style.display = "none";
-
-        btn.innerHTML =
-        "Megint péntek? ❌";
-    }
+    document.getElementById("pBtn").innerText=
+    pentek?"Megint péntek? ✅":"Megint péntek? ❌";
 }
 
-function mentes(){
+function add(){
 
-    const tetel =
-    Number(document.getElementById("tetel").value) || 0;
+    let t=+document.getElementById("t").value||0;
+    let k=+document.getElementById("k").value||0;
+    let g=+document.getElementById("kg").value||0;
 
-    const kg =
-    Number(document.getElementById("kg").value) || 0;
+    st+=t;
+    sg+=g;
 
-    const karton =
-    Number(document.getElementById("karton").value) || 0;
+    if(pentek) sk+=k;
 
-    if(tetel === 0 && kg === 0){
-        return;
-    }
+    localStorage.setItem("st",st);
+    localStorage.setItem("sk",sk);
+    localStorage.setItem("sg",sg);
 
-    osszTetel += tetel;
-    osszKg += kg;
+    render();
 
-    if(pentekMod){
-        osszKarton += karton;
-    }
+    document.getElementById("t").value="";
+    document.getElementById("k").value="";
+    document.getElementById("kg").value="";
 
-    localStorage.setItem("tetel", osszTetel);
-    localStorage.setItem("karton", osszKarton);
-    localStorage.setItem("kg", osszKg);
-
-    frissit();
-
-    document.getElementById("tetel").value = "";
-    document.getElementById("kg").value = "";
-    document.getElementById("karton").value = "";
-
-    document.getElementById("tetel").focus();
-
-    const s =
-    document.getElementById("success");
-
-    s.style.display = "block";
-
-    setTimeout(function(){
-
-        s.style.display = "none";
-
-    },1000);
-
-    if(navigator.vibrate){
-        navigator.vibrate(50);
-    }
+    document.getElementById("ok").style.display="block";
+    setTimeout(()=>document.getElementById("ok").style.display="none",900);
 }
 
-function ujNap(){
-
-    if(confirm("Biztosan lezárod a mai napot?")){
-
+function resetDay(){
+    if(confirm("Biztos új nap?")){
         localStorage.clear();
-
-        osszTetel = 0;
-        osszKarton = 0;
-        osszKg = 0;
-
-        frissit();
+        st=sk=sg=0;
+        render();
     }
 }
 
-window.onload = function(){
-
-    document.getElementById("tetel").focus();
-
-    pentekMod = false;
-
-    document.getElementById("kartonBlokk")
-    .style.display = "none";
-
-    document.getElementById("kartonStat")
-    .style.display = "none";
-
-    document.getElementById("pentekBtn")
-    .innerHTML = "Megint péntek? ❌";
-};
-
-    if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js');
 }
 </script>
 
