@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<title>Raktár Pro</title>
+<title>Raktár PRO</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#581c87">
 
 <style>
-
 body{
     margin:0;
     padding:20px;
@@ -24,26 +23,13 @@ body{
     background:#7c3aed;
     padding:18px;
     border-radius:18px;
+    text-align:center;
     font-size:22px;
     font-weight:800;
-    text-align:center;
     margin-bottom:15px;
 }
 
-.kgBox{
-    background:#6d28d9;
-    border-radius:18px;
-    padding:20px;
-    text-align:center;
-    margin-bottom:15px;
-}
-
-.kgBig{
-    font-size:60px;
-    font-weight:900;
-}
-
-.card{
+.box{
     background:#6d28d9;
     border-radius:18px;
     padding:15px;
@@ -51,8 +37,6 @@ body{
 }
 
 label{
-    display:block;
-    margin-bottom:8px;
     font-size:13px;
     opacity:0.8;
 }
@@ -62,7 +46,7 @@ input{
     border:none;
     border-radius:14px;
     padding:16px;
-    font-size:34px;
+    font-size:32px;
     background:#4c1d95;
     color:white;
     font-weight:700;
@@ -88,15 +72,10 @@ button{
     font-size:28px;
 }
 
-.grayBtn{
+.gray{
     background:#111827;
     color:white;
     margin-bottom:10px;
-}
-
-.redBtn{
-    background:#ef4444;
-    color:white;
 }
 
 .stat{
@@ -108,22 +87,13 @@ button{
 .row{
     display:flex;
     justify-content:space-between;
-    font-size:20px;
     margin:6px 0;
-}
-
-.success{
-    display:none;
-    text-align:center;
     font-size:20px;
-    font-weight:800;
-    color:#22c55e;
 }
 
 #kartonBox{
     display:none;
 }
-
 </style>
 </head>
 
@@ -131,106 +101,81 @@ button{
 
 <div class="header">📦 Raktár PRO</div>
 
-<div class="success" id="ok">✓ MENTVE</div>
+<button class="gray" onclick="toggle()">Megint péntek? ❌</button>
 
-<div class="kgBox">
-    <div class="kgBig" id="kgSum">0</div>
-    KG
-</div>
-
-<button class="grayBtn" onclick="togglePentek()" id="pBtn">
-Megint péntek? ❌
-</button>
-
-<div class="card">
+<div class="box">
 <label>TÉTEL</label>
 <input id="t" type="tel" inputmode="numeric">
 </div>
 
-<div class="card" id="kartonBox">
+<div class="box" id="kartonBox">
 <label>KARTON</label>
 <input id="k" type="tel" inputmode="numeric">
 </div>
 
-<div class="card">
+<div class="box">
 <label>SÚLY</label>
-<input id="kg" type="tel" inputmode="numeric">
+<input id="g" type="tel" inputmode="numeric">
 </div>
 
 <div class="stat">
 <div class="row">Tétel <span id="st">0</span></div>
 <div class="row">Karton <span id="sk">0</span></div>
-<div class="row"><b>Napi egység</b> <b id="se">0</b></div>
+<div class="row"><b>Napi egység</b> <b id="sum">0</b></div>
 </div>
 
-<button class="redBtn" onclick="resetDay()">Új nap</button>
+<button onclick="osszesites()" class="gray">📊 ÖSSZESÍTÉS</button>
 
 <button class="saveBtn" onclick="add()">HOZZÁADÁS</button>
 
 <script>
+
 let pentek=false;
 
-let st=+localStorage.getItem("st")||0;
-let sk=+localStorage.getItem("sk")||0;
-let sg=+localStorage.getItem("sg")||0;
+let st=0;
+let sk=0;
+let sg=0;
 
-function render(){
-    document.getElementById("st").innerText=st;
-    document.getElementById("sk").innerText=sk;
-    document.getElementById("kgSum").innerText=sg;
-
-    let sum = pentek ? (st+sk+sg) : (st+sg);
-    document.getElementById("se").innerText=sum;
-}
-
-render();
-
-function togglePentek(){
+function toggle(){
     pentek=!pentek;
-
     document.getElementById("kartonBox").style.display=
     pentek?"block":"none";
-
-    document.getElementById("pBtn").innerText=
-    pentek?"Megint péntek? ✅":"Megint péntek? ❌";
 }
 
 function add(){
 
-    let t=+document.getElementById("t").value||0;
+    let t=+t.value||+document.getElementById("t").value||0;
     let k=+document.getElementById("k").value||0;
-    let g=+document.getElementById("kg").value||0;
+    let g=+document.getElementById("g").value||0;
 
     st+=t;
     sg+=g;
 
     if(pentek) sk+=k;
 
-    localStorage.setItem("st",st);
-    localStorage.setItem("sk",sk);
-    localStorage.setItem("sg",sg);
-
-    render();
+    document.getElementById("st").innerText=st;
+    document.getElementById("sk").innerText=sk;
 
     document.getElementById("t").value="";
     document.getElementById("k").value="";
-    document.getElementById("kg").value="";
+    document.getElementById("g").value="";
 
-    document.getElementById("ok").style.display="block";
-    setTimeout(()=>document.getElementById("ok").style.display="none",900);
+    calc();
 }
 
-function resetDay(){
-    if(confirm("Biztos új nap?")){
-        localStorage.clear();
-        st=sk=sg=0;
-        render();
-    }
+function osszesites(){
+    calc();
+}
+
+function calc(){
+    let sum = pentek ? (st+sk+sg) : (st+sg);
+    document.getElementById("sum").innerText=sum;
 }
 
 if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js');
+    navigator.serviceWorker.register("sw.js");
 }
+
 </script>
 
 </body>
