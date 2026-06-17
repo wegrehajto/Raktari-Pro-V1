@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<title>Raktár App</title>
+<title>Raktár PRO Dashboard</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111827">
@@ -14,7 +14,7 @@
 body{
     margin:0;
     padding:16px;
-    padding-bottom:120px;
+    padding-bottom:140px;
     background:#111827;
     color:white;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
@@ -37,18 +37,13 @@ body{
     margin-bottom:10px;
 }
 
-label{
-    font-size:13px;
-    opacity:0.7;
-}
-
 input{
     width:100%;
     box-sizing:border-box;
     border:none;
     border-radius:12px;
     padding:14px;
-    font-size:30px;
+    font-size:28px;
     background:#374151;
     color:white;
     font-weight:700;
@@ -84,6 +79,7 @@ button{
     background:#1f2937;
     padding:14px;
     border-radius:14px;
+    margin-top:10px;
 }
 
 .row{
@@ -93,53 +89,55 @@ button{
     margin:6px 0;
 }
 
-#kartonBox{
-    display:none;
+.small{
+    font-size:13px;
+    opacity:0.7;
 }
 
-.success{
-    display:none;
-    text-align:center;
-    color:#22c55e;
-    font-weight:800;
-    margin-bottom:10px;
-}
+#kartonBox{display:none;}
 
 </style>
 </head>
 
 <body>
 
-<div class="header">📦 Raktár App</div>
-
-<div id="ok" class="success">✓ MENTVE</div>
+<div class="header">📦 Raktár PRO Dashboard</div>
 
 <button class="grayBtn" onclick="togglePentek()" id="pbtn">
 Megint péntek? ❌
 </button>
 
 <div class="card">
-<label>TÉTEL</label>
-<input id="tetel" type="tel" inputmode="numeric">
+<div class="small">TÉTEL</div>
+<input id="t" type="tel" inputmode="numeric">
 </div>
 
 <div class="card" id="kartonBox">
-<label>KARTON</label>
-<input id="karton" type="tel" inputmode="numeric">
+<div class="small">KARTON</div>
+<input id="k" type="tel" inputmode="numeric">
 </div>
 
 <div class="card">
-<label>SÚLY</label>
-<input id="suly" type="tel" inputmode="numeric">
+<div class="small">SÚLY</div>
+<input id="s" type="tel" inputmode="numeric">
 </div>
 
+<button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
+
 <div class="stat">
+<div class="row"><b>Mai összesítés</b></div>
 <div class="row">Tétel <span id="st">0</span></div>
 <div class="row">Karton <span id="sk">0</span></div>
+<div class="row">Súly <span id="ss">0</span></div>
 <div class="row"><b>Napi egység</b> <b id="sum">0</b></div>
 </div>
 
-<button class="saveBtn" onclick="hozzaad()">HOZZÁADÁS</button>
+<div class="stat">
+<div class="row"><b>Előző napok</b></div>
+<div id="history"></div>
+</div>
+
+<button class="saveBtn" onclick="resetDay()">MŰSZAK LEZÁRÁS</button>
 
 <script>
 
@@ -150,64 +148,78 @@ let today = new Date().toISOString().split("T")[0];
 let data = JSON.parse(localStorage.getItem("data") || "{}");
 
 if(!data[today]){
-    data[today] = { tetel:0, karton:0, suly:0 };
+    data[today] = {tetel:0,karton:0,suly:0};
 }
-
-let st = 0;
-let sk = 0;
-let sg = 0;
 
 function togglePentek(){
-
     pentek = !pentek;
-
-    document.getElementById("kartonBox").style.display =
-    pentek ? "block" : "none";
-
-    document.getElementById("pbtn").innerText =
-    pentek ? "Megint péntek? ✅" : "Megint péntek? ❌";
+    document.getElementById("kartonBox").style.display = pentek ? "block" : "none";
 }
 
-function hozzaad(){
+function add(){
 
-    const t = Number(document.getElementById("tetel").value) || 0;
-    const k = Number(document.getElementById("karton").value) || 0;
-    const s = Number(document.getElementById("suly").value) || 0;
+    const t = +document.getElementById("t").value || 0;
+    const k = +document.getElementById("k").value || 0;
+    const s = +document.getElementById("s").value || 0;
 
-    if(t === 0 && s === 0 && k === 0) return;
-
-    st += t;
-    sg += s;
-
-    if(pentek) sk += k;
+    if(!t && !s && !k) return;
 
     data[today].tetel += t;
+    data[today].karton += pentek ? k : 0;
     data[today].suly += s;
-    data[today].karton += (pentek ? k : 0);
 
     localStorage.setItem("data", JSON.stringify(data));
 
-    document.getElementById("st").innerText = st;
-    document.getElementById("sk").innerText = sk;
+    render();
+    document.getElementById("t").value="";
+    document.getElementById("k").value="";
+    document.getElementById("s").value="";
+}
 
-    let sum = pentek ? (st + sk + sg) : (st + sg);
+function render(){
+
+    const d = data[today];
+
+    document.getElementById("st").innerText = d.tetel;
+    document.getElementById("sk").innerText = d.karton;
+    document.getElementById("ss").innerText = d.suly;
+
+    let sum = d.tetel + d.karton + d.suly;
     document.getElementById("sum").innerText = sum;
 
-    document.getElementById("tetel").value = "";
-    document.getElementById("karton").value = "";
-    document.getElementById("suly").value = "";
+    let h = "";
+    for(let day in data){
+        if(day === today) continue;
 
-    document.getElementById("tetel").focus();
+        const x = data[day];
+        let total = x.tetel + x.karton + x.suly;
 
-    const ok = document.getElementById("ok");
-    ok.style.display = "block";
+        h += `
+        <div class="card">
+            <div><b>${day}</b></div>
+            <div>T: ${x.tetel} | K: ${x.karton} | S: ${x.suly}</div>
+            <div><b>Össz: ${total}</b></div>
+        </div>`;
+    }
 
-    setTimeout(()=> ok.style.display = "none", 800);
+    document.getElementById("history").innerHTML = h || "Nincs előző adat";
 }
 
-if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js');
+function resetDay(){
+
+    if(!confirm("Biztos lezárod a műszakot?")) return;
+
+    today = new Date().toISOString().split("T")[0];
+
+    if(!data[today]){
+        data[today] = {tetel:0,karton:0,suly:0};
+    }
+
+    localStorage.setItem("data", JSON.stringify(data));
+    render();
 }
+
+render();
 
 </script>
 
