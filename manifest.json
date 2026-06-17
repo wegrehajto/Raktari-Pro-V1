@@ -1,10 +1,10 @@
 {
-  "name": "Raktár PRO",
+  "name": "Raktár App",
   "short_name": "Raktár",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#581c87",
-  "theme_color": "#581c87",
+  "background_color": "#111827",
+  "theme_color": "#111827",
   "icons": [
     {
       "src": "icon.png",
