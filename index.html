@@ -215,7 +215,8 @@ function resetDay(){
 
     pentek = false;
     document.getElementById("kartonBox").style.display = "none";
-    document.getElementById("pbtn").innerText = "Megint péntek? ❌";
+    document.getElementById("pbtn").innerText =
+pentek ? "Karton mód ✅" : "Karton mód ❌";
 }
 
 render();
