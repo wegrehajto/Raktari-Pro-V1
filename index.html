@@ -4,50 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<title>Raktár PRO</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#581c87">
+<title>Raktár App</title>
 
 <style>
+
 body{
     margin:0;
-    padding:20px;
-    padding-bottom:140px;
-    background:#581c87;
+    padding:16px;
+    padding-bottom:120px;
+    background:#111827;
     color:white;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
 }
 
 .header{
-    background:#7c3aed;
-    padding:18px;
-    border-radius:18px;
+    background:#374151;
+    padding:16px;
+    border-radius:14px;
     text-align:center;
-    font-size:22px;
+    font-size:20px;
     font-weight:800;
-    margin-bottom:15px;
+    margin-bottom:12px;
 }
 
-.box{
-    background:#6d28d9;
-    border-radius:18px;
-    padding:15px;
-    margin-bottom:12px;
+.card{
+    background:#1f2937;
+    border-radius:14px;
+    padding:12px;
+    margin-bottom:10px;
 }
 
 label{
     font-size:13px;
-    opacity:0.8;
+    opacity:0.7;
 }
 
 input{
     width:100%;
+    box-sizing:border-box;
     border:none;
-    border-radius:14px;
-    padding:16px;
-    font-size:32px;
-    background:#4c1d95;
+    border-radius:12px;
+    padding:14px;
+    font-size:30px;
+    background:#374151;
     color:white;
     font-weight:700;
 }
@@ -55,67 +54,79 @@ input{
 button{
     width:100%;
     border:none;
-    border-radius:16px;
-    padding:18px;
-    font-size:20px;
-    font-weight:900;
+    border-radius:14px;
+    padding:16px;
+    font-size:18px;
+    font-weight:800;
 }
 
 .saveBtn{
     position:fixed;
-    bottom:15px;
-    left:15px;
-    right:15px;
+    left:12px;
+    right:12px;
+    bottom:12px;
+    height:70px;
     background:#22c55e;
     color:black;
-    height:85px;
-    font-size:28px;
 }
 
-.gray{
-    background:#111827;
+.grayBtn{
+    background:#4b5563;
     color:white;
     margin-bottom:10px;
 }
 
 .stat{
-    background:#6d28d9;
-    padding:15px;
-    border-radius:18px;
+    background:#1f2937;
+    padding:14px;
+    border-radius:14px;
 }
 
 .row{
     display:flex;
     justify-content:space-between;
+    font-size:18px;
     margin:6px 0;
-    font-size:20px;
 }
 
 #kartonBox{
     display:none;
 }
+
+.success{
+    display:none;
+    text-align:center;
+    color:#22c55e;
+    font-weight:800;
+    margin-bottom:10px;
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="header">📦 Raktár PRO</div>
+<div class="header">📦 Raktár App</div>
 
-<button class="gray" onclick="toggle()">Megint péntek? ❌</button>
+<div id="ok" class="success">✓ MENTVE</div>
 
-<div class="box">
+<button class="grayBtn" onclick="togglePentek()" id="pbtn">
+Megint péntek? ❌
+</button>
+
+<div class="card">
 <label>TÉTEL</label>
-<input id="t" type="tel" inputmode="numeric">
+<input id="tetel" type="tel" inputmode="numeric">
 </div>
 
-<div class="box" id="kartonBox">
+<div class="card" id="kartonBox">
 <label>KARTON</label>
-<input id="k" type="tel" inputmode="numeric">
+<input id="karton" type="tel" inputmode="numeric">
 </div>
 
-<div class="box">
+<div class="card">
 <label>SÚLY</label>
-<input id="g" type="tel" inputmode="numeric">
+<input id="suly" type="tel" inputmode="numeric">
 </div>
 
 <div class="stat">
@@ -124,56 +135,56 @@ button{
 <div class="row"><b>Napi egység</b> <b id="sum">0</b></div>
 </div>
 
-<button onclick="osszesites()" class="gray">📊 ÖSSZESÍTÉS</button>
-
-<button class="saveBtn" onclick="add()">HOZZÁADÁS</button>
+<button class="saveBtn" onclick="hozzaad()">HOZZÁADÁS</button>
 
 <script>
 
-let pentek=false;
+let pentek = false;
 
-let st=0;
-let sk=0;
-let sg=0;
+let st = 0;
+let sk = 0;
+let sg = 0;
 
-function toggle(){
-    pentek=!pentek;
-    document.getElementById("kartonBox").style.display=
-    pentek?"block":"none";
+function togglePentek(){
+
+    pentek = !pentek;
+
+    document.getElementById("kartonBox").style.display =
+    pentek ? "block" : "none";
+
+    document.getElementById("pbtn").innerText =
+    pentek ? "Megint péntek? ✅" : "Megint péntek? ❌";
 }
 
-function add(){
+function hozzaad(){
 
-    let t=+t.value||+document.getElementById("t").value||0;
-    let k=+document.getElementById("k").value||0;
-    let g=+document.getElementById("g").value||0;
+    const t = Number(document.getElementById("tetel").value) || 0;
+    const k = Number(document.getElementById("karton").value) || 0;
+    const s = Number(document.getElementById("suly").value) || 0;
 
-    st+=t;
-    sg+=g;
+    if(t === 0 && s === 0) return;
 
-    if(pentek) sk+=k;
+    st += t;
+    sg += s;
 
-    document.getElementById("st").innerText=st;
-    document.getElementById("sk").innerText=sk;
+    if(pentek) sk += k;
 
-    document.getElementById("t").value="";
-    document.getElementById("k").value="";
-    document.getElementById("g").value="";
+    document.getElementById("st").innerText = st;
+    document.getElementById("sk").innerText = sk;
 
-    calc();
-}
+    let sum = pentek ? (st + sk + sg) : (st + sg);
+    document.getElementById("sum").innerText = sum;
 
-function osszesites(){
-    calc();
-}
+    document.getElementById("tetel").value = "";
+    document.getElementById("karton").value = "";
+    document.getElementById("suly").value = "";
 
-function calc(){
-    let sum = pentek ? (st+sk+sg) : (st+sg);
-    document.getElementById("sum").innerText=sum;
-}
+    document.getElementById("tetel").focus();
 
-if('serviceWorker' in navigator){
-    navigator.serviceWorker.register("sw.js");
+    const ok = document.getElementById("ok");
+    ok.style.display = "block";
+
+    setTimeout(()=> ok.style.display = "none", 800);
 }
 
 </script>
