@@ -6,3 +6,10 @@ document.getElementById("suly").addEventListener("keydown", function(e){
         hozzaad();
     }
 });
+
+document.getElementById("suly").addEventListener("blur", function(){
+
+    if(this.value !== ""){
+        hozzaad();
+    }
+});
