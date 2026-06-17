@@ -209,27 +209,33 @@ function resetDay(){
 
     if(!confirm("Biztos lezárod a műszakot?")) return;
 
-    // 🧠 csak a MAI napot nullázzuk, nem az egészet
+    // 📦 adat nullázás
     data[today] = { tetel:0, karton:0, suly:0 };
-
     localStorage.setItem("data", JSON.stringify(data));
 
-    // UI reset
+    // 🧠 belső változók teljes reset
     st = 0;
     sk = 0;
     sg = 0;
 
-    document.getElementById("st").innerText = 0;
-    document.getElementById("sk").innerText = 0;
-    document.getElementById("sum").innerText = 0;
-
+    // 🧼 input mezők ürítése
     document.getElementById("tetel").value = "";
     document.getElementById("karton").value = "";
     document.getElementById("suly").value = "";
 
+    // 📊 UI frissítés
+    document.getElementById("st").innerText = 0;
+    document.getElementById("sk").innerText = 0;
+    document.getElementById("sum").innerText = 0;
+
+    // 🔄 karton panel vissza alapra
+    pentek = false;
+    document.getElementById("kartonBox").style.display = "none";
+    document.getElementById("pbtn").innerText = "Megint péntek? ❌";
+
+    // 🎯 fókusz vissza
     document.getElementById("tetel").focus();
 }
-
 render();
 
 </script>
