@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<title>Raktár PRO V1</title>
+<title>Szedőcsicska V2</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111827">
@@ -94,6 +94,21 @@ button{
     opacity:0.7;
 }
 
+.weightBanner{
+    position:sticky;
+    top:0;
+    z-index:999;
+    background:#dc2626;
+    color:white;
+    text-align:center;
+    font-size:18px;
+    font-weight:800;
+    padding:10px;
+    border-radius:12px;
+    margin-bottom:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+
 #kartonBox{display:none;}
 
 </style>
@@ -101,8 +116,10 @@ button{
 
 <body>
 
-<div class="header">📦 Raktár PRO V1</div>
-
+<div class="header">📦Szedőcsicska V2</div>
+<div id="weightBanner" class="weightBanner">
+    0 kg
+</div>
 <button class="grayBtn" onclick="togglePentek()" id="pbtn">
 Karton mód 
 </button>
