@@ -202,6 +202,20 @@ function add(){
 function render(){
 
     const d = data[today];
+    const banner = document.getElementById("weightBanner");
+
+banner.innerText = d.suly.toLocaleString("hu-HU") + " kg";
+
+if(d.suly < 10000){
+    banner.style.background = "#dc2626"; // piros
+}
+else if(d.suly < 13000){
+    banner.style.background = "#16a34a"; // zöld
+}
+else{
+    banner.style.background = "#eab308"; // sárga
+    banner.style.color = "#000";
+}
 
     document.getElementById("st").innerText = d.tetel;
     document.getElementById("sk").innerText = d.karton;
