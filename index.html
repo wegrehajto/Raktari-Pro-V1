@@ -179,6 +179,18 @@ function add(){
     const t = Number(document.getElementById("t").value) || 0;
     const k = Number(document.getElementById("k").value) || 0;
     const s = Number(document.getElementById("s").value) || 0;
+    if(s > 750){
+
+    const biztos = confirm(
+        "Tolnak csicska?\n\n" +
+        s + " kg került megadásra."
+    );
+
+    if(!biztos){
+        document.getElementById("s").focus();
+        return;
+    }
+}
 
     if(t === 0 && k === 0 && s === 0) return;
 
