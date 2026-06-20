@@ -234,7 +234,6 @@ else{
 
     document.getElementById("st").innerText = d.tetel;
     document.getElementById("sk").innerText = d.karton;
-    document.getElementById("ss").innerText = d.suly;
 
     document.getElementById("sum").innerText =
         d.tetel + d.karton + d.suly;
@@ -247,24 +246,18 @@ function resetDay(){
     data[today] = { tetel:0, karton:0, suly:0 };
     localStorage.setItem("data", JSON.stringify(data));
 
-    // ❌ EZT TÖRÖLD LOGIKAILAG (nem kell többé)
-    st = 0;
-    sk = 0;
-    sg = 0;
-
-    // UI teljes újrarajzolás
     render();
 
-    document.getElementById("tetel").value = "";
-    document.getElementById("karton").value = "";
-    document.getElementById("suly").value = "";
+    document.getElementById("t").value = "";
+    document.getElementById("k").value = "";
+    document.getElementById("s").value = "";
 
     pentek = false;
     document.getElementById("kartonBox").style.display = "none";
-    document.getElementById("pbtn").innerText =
-pentek ? "Karton mód ✅" : "Karton mód ";
-}
+    document.getElementById("pbtn").innerText = "Karton mód";
 
+    document.getElementById("t").focus();
+}
 render();
 
 </script>
