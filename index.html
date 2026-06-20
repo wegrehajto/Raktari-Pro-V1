@@ -167,7 +167,7 @@ let pentek = false;
 let today = new Date().toISOString().split("T")[0];
 
 let data = JSON.parse(localStorage.getItem("data") || "{}");
-
+let closedPickings = JSON.parse(localStorage.getItem("closedPickings") || "[]");
 if(!data[today]){
     data[today] = {tetel:0,karton:0,suly:0};
 }
@@ -241,7 +241,35 @@ else{
 
 function resetDay(){
 
-    if(!confirm("Biztos lezárod a műszakot?")) return;
+    const d = data[today];
+
+    const egyseg = d.tetel + d.karton + d.suly;
+
+    if(d.tetel === 0 && d.karton === 0 && d.suly === 0){
+        alert("Nincs mit lezárni.");
+        return;
+    }
+
+    if(!confirm("Biztosan le akarod zárni a szedést?")) return;
+
+    const now = new Date();
+
+    const record = {
+        id: Date.now(),
+        datum: today,
+        ido: now.toLocaleTimeString("hu-HU", {
+            hour: "2-digit",
+            minute: "2-digit"
+        }),
+        tetel: d.tetel,
+        karton: d.karton,
+        suly: d.suly,
+        egyseg: egyseg
+    };
+
+    closedPickings.push(record);
+
+    localStorage.setItem("closedPickings", JSON.stringify(closedPickings));
 
     data[today] = { tetel:0, karton:0, suly:0 };
     localStorage.setItem("data", JSON.stringify(data));
@@ -257,6 +285,14 @@ function resetDay(){
     document.getElementById("pbtn").innerText = "Karton mód";
 
     document.getElementById("t").focus();
+
+    alert(
+        "Szedés lezárva!\n\n" +
+        "Tétel: " + record.tetel + "\n" +
+        "Karton: " + record.karton + "\n" +
+        "Súly: " + record.suly + " kg\n" +
+        "Egység: " + record.egyseg
+    );
 }
 render();
 
