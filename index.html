@@ -32,6 +32,16 @@ body{
     margin-bottom:12px;
 }
 
+.dangerBtn{
+    background:#7f1d1d;
+    color:white;
+    margin-top:16px;
+    padding:14px;
+    font-size:15px;
+    font-weight:800;
+    border:1px solid #ef4444;
+}
+    
 .menuBtn{
     width:auto;
     padding:10px 14px;
@@ -306,6 +316,10 @@ Karton mód
 </div>
 
         <div id="menuContent"></div>
+        
+        <button class="dangerBtn" onclick="deleteAllData()">
+🗑️ Összes adat törlése
+</button>
 
     </div>
 </div>
@@ -801,6 +815,63 @@ function renderAtlagok(){
     `;
 }
 
+function deleteAllData(){
+
+    const biztos = confirm(
+        "Biztosan törölni akarod az összes eddigi adatot?\n\n" +
+        "Ez törli:\n" +
+        "- a lezárt szedéseket\n" +
+        "- a napi adatokat\n" +
+        "- az átlagokat\n" +
+        "- a tesztadatokat\n\n" +
+        "Ezt nem lehet visszavonni."
+    );
+
+    if(!biztos) return;
+
+    const kod = prompt(
+        "A végleges törléshez írd be pontosan:\n\nTORLES"
+    );
+
+    if(kod !== "TORLES"){
+        alert("Törlés megszakítva.");
+        return;
+    }
+
+    localStorage.removeItem("data");
+    localStorage.removeItem("closedPickings");
+
+    data = {};
+    closedPickings = [];
+
+    today = getTodayKey();
+
+    data[today] = {
+        tetel:0,
+        karton:0,
+        suly:0
+    };
+
+    saveData();
+    saveClosed();
+
+    document.getElementById("t").value = "";
+    document.getElementById("k").value = "";
+    document.getElementById("s").value = "";
+
+    kartonMod = false;
+    document.getElementById("kartonBox").style.display = "none";
+    document.getElementById("pbtn").innerText = "Karton mód";
+
+    render();
+
+    if(document.getElementById("menuOverlay").style.display === "block"){
+        showMenuTab("szedesek");
+    }
+
+    alert("Minden eddigi adat törölve.");
+}
+    
 render();
 
 if("serviceWorker" in navigator){
