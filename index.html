@@ -86,12 +86,13 @@ button{
 }
 
 .closeDayBtn{
-    background:#4b5563;
+    background:#7f1d1d;
     color:white;
     margin-top:12px;
     padding:12px;
     font-size:15px;
-    font-weight:700;
+    font-weight:800;
+    border:1px solid #ef4444;
 }
 
 .stat{
@@ -411,25 +412,25 @@ const quotes = [
 function showDailyQuote(){
 
     const todayQuoteKey = getTodayKey();
-    const lastQuoteDate = localStorage.getItem("lastQuoteDate");
+    const savedQuoteDate = localStorage.getItem("quoteDate");
+    const savedQuoteText = localStorage.getItem("quoteText");
 
     const quoteBox = document.getElementById("quoteBox");
 
-    if(lastQuoteDate === todayQuoteKey){
-        quoteBox.style.display = "none";
+    if(savedQuoteDate === todayQuoteKey && savedQuoteText){
+        quoteBox.innerText = savedQuoteText;
+        quoteBox.style.display = "block";
         return;
     }
 
     const randomIndex = Math.floor(Math.random() * quotes.length);
+    const todaysQuote = quotes[randomIndex];
 
-    quoteBox.innerText = quotes[randomIndex];
+    localStorage.setItem("quoteDate", todayQuoteKey);
+    localStorage.setItem("quoteText", todaysQuote);
+
+    quoteBox.innerText = todaysQuote;
     quoteBox.style.display = "block";
-
-    localStorage.setItem("lastQuoteDate", todayQuoteKey);
-}
-    
-function getEgyseg(tetel, suly){
-    return Number(tetel || 0) + Number(suly || 0);
 }
 
 function toggleKartonMod(){
