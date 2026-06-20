@@ -176,6 +176,20 @@ button{
     font-weight:900;
 }
 
+.quoteBox{
+    display:none;
+    background:#1f2937;
+    color:#d1d5db;
+    border-left:4px solid #22c55e;
+    border-radius:12px;
+    padding:10px 12px;
+    margin-bottom:12px;
+    font-size:13px;
+    font-weight:600;
+    line-height:1.35;
+    opacity:0.95;
+}
+    
 .menuClose{
     width:auto;
     padding:10px 14px;
@@ -251,6 +265,10 @@ button{
 
 <div id="weightBanner" class="weightBanner">
     0 kg
+</div>
+
+<div id="quoteBox" class="quoteBox">
+    Mai bölcsesség...
 </div>
 
 <button class="grayBtn" onclick="toggleKartonMod()" id="pbtn">
@@ -356,6 +374,60 @@ function fmt(n){
     return Number(n || 0).toLocaleString("hu-HU");
 }
 
+const quotes = [
+    "Aki ma nem szed, az holnap is csak néz.",
+    "A kg nem hazudik, csak néha fáj.",
+    "Szedjél, ne filozofálj.",
+    "A targonca nem barát, de legalább nem beszél vissza.",
+    "Mai cél: ne nullán zárni, mint egy nyomorult.",
+    "Ha 10 tonna alatt vagy, még csak bemelegítettél.",
+    "A karton nem számít, csak idegesít.",
+    "A raktárban nincs mese, csak tétel meg súly.",
+    "Egy jó szedő nem siet, csak gyorsabban szenved.",
+    "Aki korán kel, hamarabb megbánja.",
+    "Ma is csak a kg választ el a dicsőségtől.",
+    "Nem baj, ha nehéz, legalább nem könnyű.",
+    "A rendszer figyel. Sajnos te dolgozol.",
+    "Tedd oda magad, aztán majd letagadod.",
+    "Ha sípol a scanner, legalább valaki kommunikál veled.",
+
+    "A mai nap is lehet szar, de legalább mérhető.",
+    "Aki nem számol, azt a műszak végén meglepi az élet.",
+    "A súly megy fel, a kedv meg le.",
+    "Ne aggódj, a raktár majd visszaveszi az életkedved.",
+    "A jó szedő nem panaszkodik, csak belül hal meg.",
+    "Ha elfáradtál, az azt jelenti, hogy működik.",
+    "Minden tétel egy újabb bizonyíték, hogy ma sem pihensz.",
+    "A karton mód csak bátraknak való.",
+    "A 13 tonna nem cél, hanem személyiségzavar.",
+    "Aki ma 10 tonnát szed, az holnap már tudja, hol fáj.",
+    "A raktár nem kérdez, csak adja a feladatot.",
+    "A nap végén nem az számít, mit érzel, hanem mennyi a kg.",
+    "A tétel kicsi, a szenvedés nagy.",
+    "Ha ez könnyű lenne, nem neked adnák.",
+    "Mosolyogj, legalább az app számol helyetted."
+];
+
+function showDailyQuote(){
+
+    const todayQuoteKey = getTodayKey();
+    const lastQuoteDate = localStorage.getItem("lastQuoteDate");
+
+    const quoteBox = document.getElementById("quoteBox");
+
+    if(lastQuoteDate === todayQuoteKey){
+        quoteBox.style.display = "none";
+        return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * quotes.length);
+
+    quoteBox.innerText = quotes[randomIndex];
+    quoteBox.style.display = "block";
+
+    localStorage.setItem("lastQuoteDate", todayQuoteKey);
+}
+    
 function getEgyseg(tetel, suly){
     return Number(tetel || 0) + Number(suly || 0);
 }
@@ -873,6 +945,7 @@ function deleteAllData(){
 }
     
 render();
+showDailyQuote();
 
 if("serviceWorker" in navigator){
     navigator.serviceWorker.register("./sw.js");
