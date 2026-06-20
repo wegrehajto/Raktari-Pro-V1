@@ -1,6 +1,6 @@
 {
-  "name": "Raktár PRO Dashboard",
-  "short_name": "Raktár",
+  "name": "Szedőcsicska V2",
+  "short_name": "Szedő",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#111827",
