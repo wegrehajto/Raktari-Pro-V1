@@ -215,11 +215,6 @@ button{
     font-weight:900;
 }
 
-.warn{
-    color:#eab308;
-    font-weight:900;
-}
-
 .empty{
     opacity:.75;
     text-align:center;
@@ -239,7 +234,7 @@ button{
     0 kg
 </div>
 
-<button class="grayBtn" onclick="togglePentek()" id="pbtn">
+<button class="grayBtn" onclick="toggleKartonMod()" id="pbtn">
 Karton mód
 </button>
 
@@ -266,11 +261,11 @@ Karton mód
 
 <button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
 
-<button class="closeDayBtn" onclick="resetDay()">
+<button class="closeDayBtn" onclick="closePicking()">
 📅 Szedés lezárása
 </button>
 
-<!-- MENU OVERLAY -->
+<!-- MENU -->
 <div id="menuOverlay" class="menuOverlay">
     <div class="menuPanel">
 
@@ -297,7 +292,7 @@ Karton mód
 </div>
 
 <script>
-let pentek = false;
+let kartonMod = false;
 
 function getTodayKey(){
     const d = new Date();
@@ -328,14 +323,18 @@ function fmt(n){
     return Number(n || 0).toLocaleString("hu-HU");
 }
 
-function togglePentek(){
-    pentek = !pentek;
+function getEgyseg(tetel, suly){
+    return Number(tetel || 0) + Number(suly || 0);
+}
+
+function toggleKartonMod(){
+    kartonMod = !kartonMod;
 
     document.getElementById("kartonBox").style.display =
-        pentek ? "block" : "none";
+        kartonMod ? "block" : "none";
 
     document.getElementById("pbtn").innerText =
-        pentek ? "Karton mód ✅" : "Karton mód";
+        kartonMod ? "Karton mód ✅" : "Karton mód";
 }
 
 function add(){
@@ -358,7 +357,7 @@ function add(){
     if(t === 0 && k === 0 && s === 0) return;
 
     data[today].tetel += t;
-    data[today].karton += pentek ? k : 0;
+    data[today].karton += kartonMod ? k : 0;
     data[today].suly += s;
 
     saveData();
@@ -372,6 +371,11 @@ function add(){
 }
 
 function render(){
+    if(!data[today]){
+        data[today] = { tetel:0, karton:0, suly:0 };
+        saveData();
+    }
+
     const d = data[today];
 
     const banner = document.getElementById("weightBanner");
@@ -394,10 +398,10 @@ function render(){
     document.getElementById("sk").innerText = fmt(d.karton);
 
     document.getElementById("sum").innerText =
-        fmt(d.tetel + d.karton + d.suly);
+        fmt(getEgyseg(d.tetel, d.suly));
 }
 
-function resetDay(){
+function closePicking(){
     const d = data[today];
 
     if(d.tetel === 0 && d.karton === 0 && d.suly === 0){
@@ -419,7 +423,7 @@ function resetDay(){
         tetel: d.tetel,
         karton: d.karton,
         suly: d.suly,
-        egyseg: d.tetel + d.karton + d.suly
+        egyseg: getEgyseg(d.tetel, d.suly)
     };
 
     closedPickings.push(record);
@@ -434,7 +438,7 @@ function resetDay(){
     document.getElementById("k").value = "";
     document.getElementById("s").value = "";
 
-    pentek = false;
+    kartonMod = false;
     document.getElementById("kartonBox").style.display = "none";
     document.getElementById("pbtn").innerText = "Karton mód";
 
@@ -453,7 +457,7 @@ function resetDay(){
 document.getElementById("t").addEventListener("keydown", function(e){
     if(e.key === "Enter"){
         e.preventDefault();
-        if(pentek){
+        if(kartonMod){
             document.getElementById("k").focus();
         }else{
             document.getElementById("s").focus();
@@ -512,9 +516,11 @@ function getDayStats(){
     const map = {};
 
     closedPickings.forEach(r=>{
-        if(!map[r.datum]){
-            map[r.datum] = {
-                datum:r.datum,
+        const datum = r.datum || "Ismeretlen";
+
+        if(!map[datum]){
+            map[datum] = {
+                datum:datum,
                 tetel:0,
                 karton:0,
                 suly:0,
@@ -523,11 +529,15 @@ function getDayStats(){
             };
         }
 
-        map[r.datum].tetel += r.tetel;
-        map[r.datum].karton += r.karton;
-        map[r.datum].suly += r.suly;
-        map[r.datum].egyseg += r.egyseg;
-        map[r.datum].db++;
+        const tetel = Number(r.tetel || 0);
+        const karton = Number(r.karton || 0);
+        const suly = Number(r.suly || 0);
+
+        map[datum].tetel += tetel;
+        map[datum].karton += karton;
+        map[datum].suly += suly;
+        map[datum].egyseg += getEgyseg(tetel, suly);
+        map[datum].db++;
     });
 
     return Object.values(map).sort((a,b)=> b.datum.localeCompare(a.datum));
@@ -542,15 +552,22 @@ function renderSzedesek(){
         .slice()
         .sort((a,b)=> b.id - a.id);
 
-    return list.map(r=>`
-        <div class="menuCard">
-            <div class="menuCardTitle">${r.datum} - ${r.ido}</div>
-            <div class="menuLine"><span>Súly</span><b>${fmt(r.suly)} kg</b></div>
-            <div class="menuLine"><span>Tétel</span><b>${fmt(r.tetel)}</b></div>
-            <div class="menuLine"><span>Karton</span><b>${fmt(r.karton)}</b></div>
-            <div class="menuLine"><span>Egység</span><b>${fmt(r.egyseg)}</b></div>
-        </div>
-    `).join("");
+    return list.map(r=>{
+        const tetel = Number(r.tetel || 0);
+        const karton = Number(r.karton || 0);
+        const suly = Number(r.suly || 0);
+        const egyseg = getEgyseg(tetel, suly);
+
+        return `
+            <div class="menuCard">
+                <div class="menuCardTitle">${r.datum} - ${r.ido}</div>
+                <div class="menuLine"><span>Súly</span><b>${fmt(suly)} kg</b></div>
+                <div class="menuLine"><span>Tétel</span><b>${fmt(tetel)}</b></div>
+                <div class="menuLine"><span>Karton</span><b>${fmt(karton)}</b></div>
+                <div class="menuLine"><span>Egység</span><b>${fmt(egyseg)}</b></div>
+            </div>
+        `;
+    }).join("");
 }
 
 function renderNapok(){
@@ -575,7 +592,7 @@ function renderNapok(){
 function renderAtlagok(){
     const days = getDayStats();
 
-    if(days.length === 0){
+    if(days.length === 0 || closedPickings.length === 0){
         return `<div class="empty">Még nincs elég adat az átlagokhoz.</div>`;
     }
 
@@ -585,13 +602,25 @@ function renderAtlagok(){
     const totalEgyseg = days.reduce((sum,d)=>sum + d.egyseg, 0);
 
     const avgDaySuly = Math.round(totalSuly / days.length);
+    const avgDayTetel = Math.round(totalTetel / days.length);
     const avgDayEgyseg = Math.round(totalEgyseg / days.length);
     const avgSzedesSuly = Math.round(totalSuly / closedPickings.length);
 
     const currentMonth = today.slice(0,7);
     const monthDays = days.filter(d=>d.datum.startsWith(currentMonth));
+
     const monthSuly = monthDays.reduce((sum,d)=>sum + d.suly, 0);
-    const monthAvg = monthDays.length ? Math.round(monthSuly / monthDays.length) : 0;
+    const monthTetel = monthDays.reduce((sum,d)=>sum + d.tetel, 0);
+    const monthEgyseg = monthDays.reduce((sum,d)=>sum + d.egyseg, 0);
+
+    const monthAvgSuly = monthDays.length ? Math.round(monthSuly / monthDays.length) : 0;
+    const monthAvgTetel = monthDays.length ? Math.round(monthTetel / monthDays.length) : 0;
+    const monthAvgEgyseg = monthDays.length ? Math.round(monthEgyseg / monthDays.length) : 0;
+
+    const kartonosNapok = days.filter(d=>d.karton > 0);
+    const avgKartonKartonNapokon = kartonosNapok.length
+        ? Math.round(totalKarton / kartonosNapok.length)
+        : 0;
 
     const bestDay = days.reduce((best,d)=> d.suly > best.suly ? d : best, days[0]);
     const worstDay = days.reduce((worst,d)=> d.suly < worst.suly ? d : worst, days[0]);
@@ -610,22 +639,38 @@ function renderAtlagok(){
         <div class="menuCard">
             <div class="menuCardTitle">📈 Átlagok</div>
             <div class="menuLine"><span>Napi átlag súly</span><b>${fmt(avgDaySuly)} kg</b></div>
+            <div class="menuLine"><span>Napi átlag tétel</span><b>${fmt(avgDayTetel)}</b></div>
             <div class="menuLine"><span>Napi átlag egység</span><b>${fmt(avgDayEgyseg)}</b></div>
-            <div class="menuLine"><span>Szedésenkénti átlag</span><b>${fmt(avgSzedesSuly)} kg</b></div>
-            <div class="menuLine"><span>Havi átlag súly</span><b>${fmt(monthAvg)} kg</b></div>
+            <div class="menuLine"><span>Szedésenkénti átlag súly</span><b>${fmt(avgSzedesSuly)} kg</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📅 Aktuális havi átlagok</div>
+            <div class="menuLine"><span>Havi átlag súly</span><b>${fmt(monthAvgSuly)} kg</b></div>
+            <div class="menuLine"><span>Havi átlag tétel</span><b>${fmt(monthAvgTetel)}</b></div>
+            <div class="menuLine"><span>Havi átlag egység</span><b>${fmt(monthAvgEgyseg)}</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📦 Karton külön statisztika</div>
+            <div class="menuLine"><span>Össz karton</span><b>${fmt(totalKarton)}</b></div>
+            <div class="menuLine"><span>Kartonos napok</span><b>${fmt(kartonosNapok.length)}</b></div>
+            <div class="menuLine"><span>Átlag karton / kartonos nap</span><b>${fmt(avgKartonKartonNapokon)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">🏆 Legjobb nap</div>
             <div class="menuLine"><span>Dátum</span><b class="good">${bestDay.datum}</b></div>
-            <div class="menuLine"><span>Súly</span><b class="good">${fmt(bestDay.suly)} kg</b></div>
+            <div class="menuLine"><span>Súly alapján</span><b class="good">${fmt(bestDay.suly)} kg</b></div>
+            <div class="menuLine"><span>Tétel</span><b>${fmt(bestDay.tetel)}</b></div>
             <div class="menuLine"><span>Egység</span><b>${fmt(bestDay.egyseg)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">🐌 Legrosszabb nap</div>
             <div class="menuLine"><span>Dátum</span><b class="bad">${worstDay.datum}</b></div>
-            <div class="menuLine"><span>Súly</span><b class="bad">${fmt(worstDay.suly)} kg</b></div>
+            <div class="menuLine"><span>Súly alapján</span><b class="bad">${fmt(worstDay.suly)} kg</b></div>
+            <div class="menuLine"><span>Tétel</span><b>${fmt(worstDay.tetel)}</b></div>
             <div class="menuLine"><span>Egység</span><b>${fmt(worstDay.egyseg)}</b></div>
         </div>
     `;
