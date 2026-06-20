@@ -167,7 +167,7 @@ button{
 
 .menuTabs{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr;
+    grid-template-columns:1fr 1fr;
     gap:8px;
     margin-bottom:12px;
 }
@@ -275,16 +275,22 @@ Karton mód
         </div>
 
         <div class="menuTabs">
-            <button class="menuTab active" data-tab="szedesek" onclick="showMenuTab('szedesek')">
-                Szedések
-            </button>
-            <button class="menuTab" data-tab="napok" onclick="showMenuTab('napok')">
-                Napok
-            </button>
-            <button class="menuTab" data-tab="atlagok" onclick="showMenuTab('atlagok')">
-                Átlagok
-            </button>
-        </div>
+    <button class="menuTab active" data-tab="szedesek" onclick="showMenuTab('szedesek')">
+        Szedések
+    </button>
+
+    <button class="menuTab" data-tab="napok" onclick="showMenuTab('napok')">
+        Napok
+    </button>
+
+    <button class="menuTab" data-tab="atlagok" onclick="showMenuTab('atlagok')">
+        Átlagok
+    </button>
+
+    <button class="menuTab" data-tab="changelog" onclick="showMenuTab('changelog')">
+        Changelog
+    </button>
+</div>
 
         <div id="menuContent"></div>
 
@@ -510,6 +516,10 @@ function showMenuTab(tab){
     if(tab === "atlagok"){
         box.innerHTML = renderAtlagok();
     }
+
+    if(tab === "changelog"){
+        box.innerHTML = renderChangelog();
+    }
 }
 
 function getDayStats(){
@@ -543,6 +553,108 @@ function getDayStats(){
     return Object.values(map).sort((a,b)=> b.datum.localeCompare(a.datum));
 }
 
+function renderChangelog(){
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">📦 Szedőcsicska V2 - Changelog</div>
+            <div class="menuLine">
+                <span>Jelenlegi verzió</span>
+                <b>V0.9</b>
+            </div>
+            <div class="menuLine">
+                <span>Állapot</span>
+                <b class="good">Stabil tesztverzió</b>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.1 - Alap rendszer</div>
+            <div>- Tétel bevitel</div>
+            <div>- Súly bevitel</div>
+            <div>- Karton bevitel</div>
+            <div>- Hozzáadás funkció</div>
+            <div>- Napi egység számítás</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.2 - PWA alap</div>
+            <div>- GitHub Pages publikálás</div>
+            <div>- iPhone kezdőképernyő támogatás</div>
+            <div>- Manifest.json hozzáadva</div>
+            <div>- Service Worker alap</div>
+            <div>- Appként megnyitható telefonon</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.3 - Raktári optimalizálás</div>
+            <div>- Numerikus billentyűzet</div>
+            <div>- Egykezes használat</div>
+            <div>- Nagy beviteli mezők</div>
+            <div>- Karton mód kapcsoló</div>
+            <div>- "Megint péntek?" átnevezve "Karton mód"-ra</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.4 - Adatkezelés</div>
+            <div>- Napi adatok mentése localStorage-ba</div>
+            <div>- Frissítés után is megmaradnak az adatok</div>
+            <div>- Dátum alapú adattárolás előkészítve</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.5 - Fix súlykijelző</div>
+            <div>- Állandó felső súlykijelző hozzáadva</div>
+            <div>- Billentyűzet mellett is látható</div>
+            <div>- 0 - 9999 kg: piros</div>
+            <div>- 10000 - 12999 kg: zöld</div>
+            <div>- 13000+ kg: sárga</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.6 - UI tisztítás</div>
+            <div>- Felesleges főképernyős gombok eltávolítva</div>
+            <div>- Nagy zöld műszaklezáró gomb törölve</div>
+            <div>- Kisebb "Szedés lezárása" gomb hozzáadva</div>
+            <div>- Főképernyő egyszerűsítve</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.7 - Biztonsági ellenőrzés</div>
+            <div>- 750 kg feletti súlynál megerősítő ablak</div>
+            <div>- "Tolnak csicska?" figyelmeztetés</div>
+            <div>- Véletlen nagy értékek kiszűrése</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.8 - Menü rendszer</div>
+            <div>- Menü gomb hozzáadva</div>
+            <div>- Szedések fül</div>
+            <div>- Napok fül</div>
+            <div>- Átlagok fül</div>
+            <div>- Lezárt szedések visszanézése</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V0.9 - Statisztika javítás</div>
+            <div>- Egység számítás javítva</div>
+            <div>- Új képlet: Egység = Súly + Tétel</div>
+            <div>- Karton külön statisztika lett</div>
+            <div>- Karton nem számít bele az átlagokba</div>
+            <div>- Legjobb és legrosszabb nap súly alapján számolódik</div>
+            <div>- Changelog menüpont hozzáadva</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">Tervezett fejlesztések</div>
+            <div>- Szebb UI / apposabb kinézet</div>
+            <div>- Update log bővítése</div>
+            <div>- Előző szedések finomítása</div>
+            <div>- Átlagok továbbfejlesztése</div>
+            <div>- Export lehetőség később</div>
+        </div>
+    `;
+}
+    
 function renderSzedesek(){
     if(closedPickings.length === 0){
         return `<div class="empty">Még nincs lezárt szedés.</div>`;
