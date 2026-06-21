@@ -855,7 +855,7 @@ function renderElozmenyek(){
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(d.osszegyseg)}</b></div>
 
                     <div class="small" style="margin-top:12px;">
-                        Lezárt blokkok:
+                        Napi részletek:
                     </div>
 
                     ${
@@ -886,6 +886,66 @@ function renderElozmenyek(){
     }).join("");
 }
 
+function getMonthLabel(monthKey){
+    const parts = String(monthKey || "").split("-");
+    const year = parts[0] || "";
+    const month = Number(parts[1] || 0);
+
+    const names = [
+        "január",
+        "február",
+        "március",
+        "április",
+        "május",
+        "június",
+        "július",
+        "augusztus",
+        "szeptember",
+        "október",
+        "november",
+        "december"
+    ];
+
+    if(!year || !month || !names[month - 1]){
+        return monthKey || "Ismeretlen hónap";
+    }
+
+    return year + " " + names[month - 1];
+}
+
+function getMonthStats(days){
+    const map = {};
+
+    days.forEach(function(d){
+        const honap = String(d.datum || "Ismeretlen").slice(0,7);
+
+        if(!map[honap]){
+            map[honap] = {
+                honap:honap,
+                napok:0,
+                tetel:0,
+                karton:0,
+                suly:0,
+                rendeles:0,
+                becsultKarton:0,
+                osszegyseg:0
+            };
+        }
+
+        map[honap].napok++;
+        map[honap].tetel += Number(d.tetel || 0);
+        map[honap].karton += Number(d.karton || 0);
+        map[honap].suly += Number(d.suly || 0);
+        map[honap].rendeles += Number(d.rendeles || 0);
+        map[honap].becsultKarton += Number(d.becsultKarton || 0);
+        map[honap].osszegyseg += Number(d.osszegyseg || 0);
+    });
+
+    return Object.values(map).sort(function(a,b){
+        return b.honap.localeCompare(a.honap);
+    });
+}
+
 function renderAtlagok(){
     const days = getDayStats();
 
@@ -904,26 +964,9 @@ function renderAtlagok(){
     const avgDayTetel = Math.round(totalTetel / days.length);
     const avgDayRendeles = Math.round(totalRendeles / days.length);
     const avgDayOsszegyseg = Math.round(totalOsszegyseg / days.length);
+    const avgDayBecsultKarton = Math.round(totalBecsultKarton / days.length);
 
-    const avgOrderSuly = totalRendeles ? Math.round(totalSuly / totalRendeles) : 0;
-    const avgOrderTetel = totalRendeles ? Math.round(totalTetel / totalRendeles) : 0;
-    const avgOrderOsszegyseg = totalRendeles ? Math.round(totalOsszegyseg / totalRendeles) : 0;
-
-    const currentMonth = today.slice(0,7);
-
-    const monthDays = days.filter(function(d){
-        return d.datum.startsWith(currentMonth);
-    });
-
-    const monthSuly = monthDays.reduce(function(sum,d){ return sum + d.suly; }, 0);
-    const monthTetel = monthDays.reduce(function(sum,d){ return sum + d.tetel; }, 0);
-    const monthRendeles = monthDays.reduce(function(sum,d){ return sum + d.rendeles; }, 0);
-    const monthOsszegyseg = monthDays.reduce(function(sum,d){ return sum + d.osszegyseg; }, 0);
-
-    const monthAvgSuly = monthDays.length ? Math.round(monthSuly / monthDays.length) : 0;
-    const monthAvgTetel = monthDays.length ? Math.round(monthTetel / monthDays.length) : 0;
-    const monthAvgRendeles = monthDays.length ? Math.round(monthRendeles / monthDays.length) : 0;
-    const monthAvgOsszegyseg = monthDays.length ? Math.round(monthOsszegyseg / monthDays.length) : 0;
+    const months = getMonthStats(days);
 
     const bestDay = days.reduce(function(best,d){
         return d.suly > best.suly ? d : best;
@@ -933,11 +976,53 @@ function renderAtlagok(){
         return d.suly < worst.suly ? d : worst;
     }, days[0]);
 
+    const monthlyHtml = months.map(function(m){
+        const avgSuly = Math.round(m.suly / m.napok);
+        const avgTetel = Math.round(m.tetel / m.napok);
+        const avgRendeles = Math.round(m.rendeles / m.napok);
+        const avgBecsultKarton = Math.round(m.becsultKarton / m.napok);
+        const avgOsszegyseg = Math.round(m.osszegyseg / m.napok);
+
+        return `
+            <details class="menuCard">
+                <summary class="historySummary">
+                    <div>
+                        <div class="menuCardTitle">📅 ${getMonthLabel(m.honap)}</div>
+                        <div class="small">
+                            ${fmt(m.napok)} nap · ${fmt(m.suly)} kg · ${fmt(m.rendeles)} rendelés
+                        </div>
+                    </div>
+
+                    <div class="historyTotal">
+                        ${fmt(avgSuly)} kg/nap
+                    </div>
+                </summary>
+
+                <div class="historyDetails">
+                    <div class="menuCardTitle">Havi összesen</div>
+                    <div class="menuLine"><span>Lezárt napok</span><b>${fmt(m.napok)}</b></div>
+                    <div class="menuLine"><span>Kiszedett rendelések</span><b>${fmt(m.rendeles)}</b></div>
+                    <div class="menuLine"><span>Súly</span><b>${fmt(m.suly)} kg</b></div>
+                    <div class="menuLine"><span>Tétel</span><b>${fmt(m.tetel)}</b></div>
+                    <div class="menuLine"><span>Karton</span><b>${fmt(m.karton)}</b></div>
+                    <div class="menuLine"><span>Becsült karton</span><b>~${fmt(m.becsultKarton)}</b></div>
+                    <div class="menuLine"><span>~Összegység</span><b>${fmt(m.osszegyseg)}</b></div>
+
+                    <div class="menuCardTitle" style="margin-top:14px;">Napi átlag ebben a hónapban</div>
+                    <div class="menuLine"><span>Átlag súly / nap</span><b>${fmt(avgSuly)} kg</b></div>
+                    <div class="menuLine"><span>Átlag tétel / nap</span><b>${fmt(avgTetel)}</b></div>
+                    <div class="menuLine"><span>Átlag rendelés / nap</span><b>${fmt(avgRendeles)}</b></div>
+                    <div class="menuLine"><span>Átlag becsült karton / nap</span><b>~${fmt(avgBecsultKarton)}</b></div>
+                    <div class="menuLine"><span>Átlag ~összegység / nap</span><b>${fmt(avgOsszegyseg)}</b></div>
+                </div>
+            </details>
+        `;
+    }).join("");
+
     return `
         <div class="menuCard">
             <div class="menuCardTitle">📊 Összesített adatok</div>
             <div class="menuLine"><span>Lezárt napok</span><b>${fmt(days.length)}</b></div>
-            <div class="menuLine"><span>Lezárt blokkok</span><b>${fmt(closedPickings.length)}</b></div>
             <div class="menuLine"><span>Kiszedett rendelések összesen</span><b>${fmt(totalRendeles)}</b></div>
             <div class="menuLine"><span>Össz súly</span><b>${fmt(totalSuly)} kg</b></div>
             <div class="menuLine"><span>Össz tétel</span><b>${fmt(totalTetel)}</b></div>
@@ -951,23 +1036,16 @@ function renderAtlagok(){
             <div class="menuLine"><span>Napi átlag súly</span><b>${fmt(avgDaySuly)} kg</b></div>
             <div class="menuLine"><span>Napi átlag tétel</span><b>${fmt(avgDayTetel)}</b></div>
             <div class="menuLine"><span>Napi átlag rendelés</span><b>${fmt(avgDayRendeles)}</b></div>
+            <div class="menuLine"><span>Napi átlag becsült karton</span><b>~${fmt(avgDayBecsultKarton)}</b></div>
             <div class="menuLine"><span>Napi átlag ~összegység</span><b>${fmt(avgDayOsszegyseg)}</b></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">🛒 Rendelésenkénti átlagok</div>
-            <div class="menuLine"><span>Átlag súly / rendelés</span><b>${fmt(avgOrderSuly)} kg</b></div>
-            <div class="menuLine"><span>Átlag tétel / rendelés</span><b>${fmt(avgOrderTetel)}</b></div>
-            <div class="menuLine"><span>Átlag ~összegység / rendelés</span><b>${fmt(avgOrderOsszegyseg)}</b></div>
+            <div class="menuCardTitle">🗓️ Havi lebontás</div>
+            <div class="small">Hónaponként látod az összesített adatokat és az adott hónap napi átlagait.</div>
         </div>
 
-        <div class="menuCard">
-            <div class="menuCardTitle">📅 Aktuális havi átlagok</div>
-            <div class="menuLine"><span>Havi átlag súly</span><b>${fmt(monthAvgSuly)} kg</b></div>
-            <div class="menuLine"><span>Havi átlag tétel</span><b>${fmt(monthAvgTetel)}</b></div>
-            <div class="menuLine"><span>Havi átlag rendelés</span><b>${fmt(monthAvgRendeles)}</b></div>
-            <div class="menuLine"><span>Havi átlag ~összegység</span><b>${fmt(monthAvgOsszegyseg)}</b></div>
-        </div>
+        ${monthlyHtml}
 
         <div class="menuCard">
             <div class="menuCardTitle">🏆 Legjobb nap</div>
@@ -991,8 +1069,24 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">📦 Szedőcsicska V2 - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.2</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.4</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.4 - Lezárt blokkok eltávolítása</div>
+            <div>- A „Lezárt blokkok” sor kikerült az Átlagokból</div>
+            <div>- A havi lebontás egyszerűbb és tisztább lett</div>
+            <div>- Mivel 1 nap = 1 szedés, ez az adat felesleges volt</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.3 - Átlagok egyszerűsítése</div>
+            <div>- Átlagok menüpont átláthatóbb lett</div>
+            <div>- Rendelésenkénti átlagok eltávolítva</div>
+            <div>- Havi lebontás hozzáadva</div>
+            <div>- Hónaponként külön látszik az összesítés</div>
+            <div>- Hónaponként külön látszik a napi átlag súly, tétel, rendelés és ~összegység</div>
         </div>
 
         <div class="menuCard">
