@@ -174,8 +174,10 @@ button{
     border:1px solid #374151;
     border-radius:18px;
     height:calc(100vh - 28px);
+    height:calc(100dvh - 28px);
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
     padding:14px;
     box-sizing:border-box;
 }
@@ -203,7 +205,7 @@ button{
 
 .menuTabs{
     display:grid;
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:1fr 1fr 1fr;
     gap:8px;
     margin-bottom:12px;
 }
@@ -256,6 +258,40 @@ button{
     text-align:center;
     padding:18px;
 }
+
+.historySummary{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    list-style:none;
+    cursor:pointer;
+}
+
+.historySummary::-webkit-details-marker{
+    display:none;
+}
+
+.historyTotal{
+    font-size:18px;
+    font-weight:900;
+    color:#22c55e;
+    white-space:nowrap;
+}
+
+.historyDetails{
+    margin-top:12px;
+    padding-top:10px;
+    border-top:1px solid #374151;
+}
+
+.historyPick{
+    background:#111827;
+    border-radius:12px;
+    padding:10px;
+    margin-top:8px;
+    font-size:14px;
+}
 </style>
 </head>
 
@@ -296,7 +332,8 @@ Karton mód
 <div class="stat">
     <div class="row">Tétel <span id="st">0</span></div>
     <div class="row">Karton <span id="sk">0</span></div>
-    <div class="row">Egység <span id="sum">0</span></div>
+    <div class="row">Kiszedett rendelések <span id="sr">0</span></div>
+    <div class="row">~Összegység <span id="sum">0</span></div>
 </div>
 
 <button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
@@ -319,12 +356,8 @@ Karton mód
         </div>
 
         <div class="menuTabs">
-            <button class="menuTab active" data-tab="szedesek" onclick="showMenuTab('szedesek')">
-                Szedések
-            </button>
-
-            <button class="menuTab" data-tab="napok" onclick="showMenuTab('napok')">
-                Napok
+            <button class="menuTab active" data-tab="elozmenyek" onclick="showMenuTab('elozmenyek')">
+                Előzmények
             </button>
 
             <button class="menuTab" data-tab="atlagok" onclick="showMenuTab('atlagok')">
@@ -338,9 +371,11 @@ Karton mód
 
         <div id="menuContent"></div>
 
-        <button class="dangerBtn" onclick="deleteAllData()">
-            🗑️ Összes adat törlése
-        </button>
+        <div id="dangerZone">
+            <button class="dangerBtn" onclick="deleteAllData()">
+                🗑️ Összes adat törlése
+            </button>
+        </div>
 
     </div>
 </div>
@@ -361,9 +396,29 @@ let today = getTodayKey();
 let data = JSON.parse(localStorage.getItem("data") || "{}");
 let closedPickings = JSON.parse(localStorage.getItem("closedPickings") || "[]");
 
-if(!data[today]){
-    data[today] = { tetel:0, karton:0, suly:0 };
+function createEmptyDay(){
+    return {
+        tetel:0,
+        karton:0,
+        suly:0,
+        rendeles:0
+    };
 }
+
+function ensureTodayData(){
+    today = getTodayKey();
+
+    if(!data[today]){
+        data[today] = createEmptyDay();
+    }
+
+    if(data[today].tetel === undefined) data[today].tetel = 0;
+    if(data[today].karton === undefined) data[today].karton = 0;
+    if(data[today].suly === undefined) data[today].suly = 0;
+    if(data[today].rendeles === undefined) data[today].rendeles = 0;
+}
+
+ensureTodayData();
 
 function saveData(){
     localStorage.setItem("data", JSON.stringify(data));
@@ -377,48 +432,40 @@ function fmt(n){
     return Number(n || 0).toLocaleString("hu-HU");
 }
 
+function getBecsultKarton(tetel){
+    // 1000 tétel ≈ 2000 karton, tehát 1 tételre kb. 2 karton jut.
+    return Math.round(Number(tetel || 0) * 2);
+}
+
+function getOsszegyseg(tetel, suly){
+    const t = Number(tetel || 0);
+    const s = Number(suly || 0);
+    const becsultKarton = getBecsultKarton(t);
+
+    return s + t + becsultKarton;
+}
+
+// régi név kompatibilitás miatt
 function getEgyseg(tetel, suly){
-    return Number(tetel || 0) + Number(suly || 0);
+    return getOsszegyseg(tetel, suly);
 }
 
 const quotes = [
-    "Aki ma nem szed, az holnap is csak néz.",
-    "A kg nem hazudik, csak néha fáj.",
-    "Szedjél, ne filozofálj.",
-    "A targonca nem barát, de legalább nem beszél vissza.",
-    "Mai cél: ne nullán zárni, mint egy nyomorult.",
-    "Ha 10 tonna alatt vagy, még csak bemelegítettél.",
-    "A karton nem számít, csak idegesít.",
-    "A raktárban nincs mese, csak tétel meg súly.",
-    "Egy jó szedő nem siet, csak gyorsabban szenved.",
-    "Aki korán kel, hamarabb megbánja.",
-    "Ma is csak a kg választ el a dicsőségtől.",
-    "Nem baj, ha nehéz, legalább nem könnyű.",
-    "A rendszer figyel. Sajnos te dolgozol.",
-    "Tedd oda magad, aztán majd letagadod.",
-    "Ha sípol a scanner, legalább valaki kommunikál veled.",
-    "A mai nap is lehet szar, de legalább mérhető.",
-    "Aki nem számol, azt a műszak végén meglepi az élet.",
-    "A súly megy fel, a kedv meg le.",
-    "Ne aggódj, a raktár majd visszaveszi az életkedved.",
-    "A jó szedő nem panaszkodik, csak belül hal meg.",
-    "Ha elfáradtál, az azt jelenti, hogy működik.",
-    "Minden tétel egy újabb bizonyíték, hogy ma sem pihensz.",
-    "A karton mód csak bátraknak való.",
-    "A 13 tonna nem cél, hanem személyiségzavar.",
-    "Aki ma 10 tonnát szed, az holnap már tudja, hol fáj.",
-    "A raktár nem kérdez, csak adja a feladatot.",
-    "A nap végén nem az számít, mit érzel, hanem mennyi a kg.",
-    "A tétel kicsi, a szenvedés nagy.",
-    "Ha ez könnyű lenne, nem neked adnák.",
-    "Mosolyogj, legalább az app számol helyetted.",
     "700-as? Kurva érdekes.",
     "Kurva érdekes...",
     "Nem megy, csicska?",
     "Ne zavarj!",
     "Hagyjad, majd én szedem a szarját.",
     "Súlyos papír, szebb nap.",
-    "Ez már nem szedés, ez vadászat."
+    "Ez már nem szedés, ez vadászat.",
+    "A kg nem hazudik, csak odaver.",
+    "A raktár nem kérdez, csak kioszt.",
+    "Ne nézd, szedd.",
+    "Ha súlyos a papír, szebb a nap.",
+    "Aki a súlyt hozza, az viszi a napot.",
+    "Szedni kell, nem magyarázni.",
+    "A tétel jön-megy, a kg marad.",
+    "Súlyvadász üzemmód aktiválva."
 ];
 
 function showDailyQuote(){
@@ -427,7 +474,6 @@ function showDailyQuote(){
     const savedQuoteText = localStorage.getItem("quoteText");
 
     const quoteBox = document.getElementById("quoteBox");
-
     if(!quoteBox) return;
 
     if(savedQuoteDate === todayQuoteKey && savedQuoteText){
@@ -466,6 +512,8 @@ function togglePentek(){
 }
 
 function add(){
+    ensureTodayData();
+
     const tInput = document.getElementById("t");
     const kInput = document.getElementById("k");
     const sInput = document.getElementById("s");
@@ -506,13 +554,12 @@ function add(){
         }
     }
 
-    if(!data[today]){
-        data[today] = { tetel:0, karton:0, suly:0 };
-    }
-
     data[today].tetel += t;
     data[today].karton += kartonMod ? k : 0;
     data[today].suly += s;
+
+    // 1 hozzáadás = 1 kiszedett rendelés / bolt
+    data[today].rendeles += 1;
 
     saveData();
 
@@ -528,10 +575,7 @@ function add(){
 }
 
 function render(){
-    if(!data[today]){
-        data[today] = { tetel:0, karton:0, suly:0 };
-        saveData();
-    }
+    ensureTodayData();
 
     const d = data[today];
 
@@ -556,17 +600,21 @@ function render(){
 
     const stEl = document.getElementById("st");
     const skEl = document.getElementById("sk");
+    const srEl = document.getElementById("sr");
     const sumEl = document.getElementById("sum");
 
     if(stEl) stEl.innerText = fmt(d.tetel);
     if(skEl) skEl.innerText = fmt(d.karton);
-    if(sumEl) sumEl.innerText = fmt(getEgyseg(d.tetel, d.suly));
+    if(srEl) srEl.innerText = fmt(d.rendeles);
+    if(sumEl) sumEl.innerText = fmt(getOsszegyseg(d.tetel, d.suly));
 }
 
 function closePicking(){
+    ensureTodayData();
+
     const d = data[today];
 
-    if(d.tetel === 0 && d.karton === 0 && d.suly === 0){
+    if(d.tetel === 0 && d.karton === 0 && d.suly === 0 && d.rendeles === 0){
         alert("Nincs mit lezárni.");
         return;
     }
@@ -582,16 +630,18 @@ function closePicking(){
             hour:"2-digit",
             minute:"2-digit"
         }),
-        tetel: d.tetel,
-        karton: d.karton,
-        suly: d.suly,
-        egyseg: getEgyseg(d.tetel, d.suly)
+        tetel: Number(d.tetel || 0),
+        karton: Number(d.karton || 0),
+        suly: Number(d.suly || 0),
+        rendeles: Number(d.rendeles || 0),
+        becsultKarton: getBecsultKarton(d.tetel),
+        osszegyseg: getOsszegyseg(d.tetel, d.suly)
     };
 
     closedPickings.push(record);
     saveClosed();
 
-    data[today] = { tetel:0, karton:0, suly:0 };
+    data[today] = createEmptyDay();
     saveData();
 
     document.getElementById("t").value = "";
@@ -614,10 +664,12 @@ function closePicking(){
 
     alert(
         "Szedés lezárva!\n\n" +
+        "Súly: " + fmt(record.suly) + " kg\n" +
         "Tétel: " + fmt(record.tetel) + "\n" +
         "Karton: " + fmt(record.karton) + "\n" +
-        "Súly: " + fmt(record.suly) + " kg\n" +
-        "Egység: " + fmt(record.egyseg)
+        "Kiszedett rendelések: " + fmt(record.rendeles) + "\n" +
+        "Becsült karton: ~" + fmt(record.becsultKarton) + "\n" +
+        "~Összegység: " + fmt(record.osszegyseg)
     );
 }
 
@@ -665,22 +717,28 @@ if(sEl){
 /* MENU */
 function openMenu(){
     const overlay = document.getElementById("menuOverlay");
+
     if(overlay){
         overlay.style.display = "block";
+        document.body.style.overflow = "hidden";
     }
-    showMenuTab("szedesek");
+
+    showMenuTab("elozmenyek");
 }
 
 function closeMenu(){
     const overlay = document.getElementById("menuOverlay");
+
     if(overlay){
         overlay.style.display = "none";
+        document.body.style.overflow = "";
     }
 }
 
 function showMenuTab(tab){
     document.querySelectorAll(".menuTab").forEach(function(btn){
         btn.classList.remove("active");
+
         if(btn.dataset.tab === tab){
             btn.classList.add("active");
         }
@@ -689,12 +747,8 @@ function showMenuTab(tab){
     const box = document.getElementById("menuContent");
     if(!box) return;
 
-    if(tab === "szedesek"){
-        box.innerHTML = renderSzedesek();
-    }
-
-    if(tab === "napok"){
-        box.innerHTML = renderNapok();
+    if(tab === "elozmenyek"){
+        box.innerHTML = renderElozmenyek();
     }
 
     if(tab === "atlagok"){
@@ -704,6 +758,23 @@ function showMenuTab(tab){
     if(tab === "changelog"){
         box.innerHTML = renderChangelog();
     }
+
+    const dangerZone = document.getElementById("dangerZone");
+
+    if(dangerZone){
+        dangerZone.style.display = tab === "changelog" ? "none" : "block";
+    }
+}
+
+function getRendelesCount(r){
+    const v = Number(r.rendeles || 0);
+
+    if(v > 0){
+        return v;
+    }
+
+    // régi lezárt adatoknál még nem volt rendelés-számláló
+    return 1;
 }
 
 function getDayStats(){
@@ -718,20 +789,25 @@ function getDayStats(){
                 tetel:0,
                 karton:0,
                 suly:0,
-                egyseg:0,
-                db:0
+                rendeles:0,
+                becsultKarton:0,
+                osszegyseg:0,
+                lezartBlokk:0
             };
         }
 
         const tetel = Number(r.tetel || 0);
         const karton = Number(r.karton || 0);
         const suly = Number(r.suly || 0);
+        const rendeles = getRendelesCount(r);
 
         map[datum].tetel += tetel;
         map[datum].karton += karton;
         map[datum].suly += suly;
-        map[datum].egyseg += getEgyseg(tetel, suly);
-        map[datum].db++;
+        map[datum].rendeles += rendeles;
+        map[datum].becsultKarton += getBecsultKarton(tetel);
+        map[datum].osszegyseg += getOsszegyseg(tetel, suly);
+        map[datum].lezartBlokk++;
     });
 
     return Object.values(map).sort(function(a,b){
@@ -739,50 +815,73 @@ function getDayStats(){
     });
 }
 
-function renderSzedesek(){
-    if(closedPickings.length === 0){
-        return `<div class="empty">Még nincs lezárt szedés.</div>`;
-    }
-
-    const list = closedPickings.slice().sort(function(a,b){
-        return b.id - a.id;
-    });
-
-    return list.map(function(r){
-        const tetel = Number(r.tetel || 0);
-        const karton = Number(r.karton || 0);
-        const suly = Number(r.suly || 0);
-        const egyseg = getEgyseg(tetel, suly);
-
-        return `
-            <div class="menuCard">
-                <div class="menuCardTitle">${r.datum} - ${r.ido}</div>
-                <div class="menuLine"><span>Súly</span><b>${fmt(suly)} kg</b></div>
-                <div class="menuLine"><span>Tétel</span><b>${fmt(tetel)}</b></div>
-                <div class="menuLine"><span>Karton</span><b>${fmt(karton)}</b></div>
-                <div class="menuLine"><span>Egység</span><b>${fmt(egyseg)}</b></div>
-            </div>
-        `;
-    }).join("");
-}
-
-function renderNapok(){
+function renderElozmenyek(){
     const days = getDayStats();
 
     if(days.length === 0){
-        return `<div class="empty">Még nincs lezárt nap.</div>`;
+        return `<div class="empty">Még nincs lezárt adat.</div>`;
     }
 
     return days.map(function(d){
+        const picks = closedPickings
+            .filter(function(r){
+                return (r.datum || "Ismeretlen") === d.datum;
+            })
+            .sort(function(a,b){
+                return Number(b.id || 0) - Number(a.id || 0);
+            });
+
         return `
-            <div class="menuCard">
-                <div class="menuCardTitle">${d.datum}</div>
-                <div class="menuLine"><span>Szedések száma</span><b>${fmt(d.db)}</b></div>
-                <div class="menuLine"><span>Súly</span><b>${fmt(d.suly)} kg</b></div>
-                <div class="menuLine"><span>Tétel</span><b>${fmt(d.tetel)}</b></div>
-                <div class="menuLine"><span>Karton</span><b>${fmt(d.karton)}</b></div>
-                <div class="menuLine"><span>Egység</span><b>${fmt(d.egyseg)}</b></div>
-            </div>
+            <details class="menuCard">
+                <summary class="historySummary">
+                    <div>
+                        <div class="menuCardTitle">${d.datum}</div>
+                        <div class="small">
+                            ${fmt(d.suly)} kg · ${fmt(d.tetel)} tétel · ${fmt(d.rendeles)} rendelés
+                        </div>
+                    </div>
+
+                    <div class="historyTotal">
+                        ${fmt(d.osszegyseg)}
+                    </div>
+                </summary>
+
+                <div class="historyDetails">
+                    <div class="menuLine"><span>Súly</span><b>${fmt(d.suly)} kg</b></div>
+                    <div class="menuLine"><span>Tétel</span><b>${fmt(d.tetel)}</b></div>
+                    <div class="menuLine"><span>Karton</span><b>${fmt(d.karton)}</b></div>
+                    <div class="menuLine"><span>Kiszedett rendelések száma</span><b>${fmt(d.rendeles)}</b></div>
+                    <div class="menuLine"><span>Becsült karton</span><b>~${fmt(d.becsultKarton)}</b></div>
+                    <div class="menuLine"><span>~Összegység</span><b>${fmt(d.osszegyseg)}</b></div>
+
+                    <div class="small" style="margin-top:12px;">
+                        Lezárt blokkok:
+                    </div>
+
+                    ${
+                        picks.map(function(r){
+                            const tetel = Number(r.tetel || 0);
+                            const karton = Number(r.karton || 0);
+                            const suly = Number(r.suly || 0);
+                            const rendeles = getRendelesCount(r);
+                            const becsultKarton = getBecsultKarton(tetel);
+                            const osszegyseg = getOsszegyseg(tetel, suly);
+
+                            return `
+                                <div class="historyPick">
+                                    <div><b>${r.ido || ""}</b></div>
+                                    <div>Súly: ${fmt(suly)} kg</div>
+                                    <div>Tétel: ${fmt(tetel)}</div>
+                                    <div>Karton: ${fmt(karton)}</div>
+                                    <div>Kiszedett rendelések: ${fmt(rendeles)}</div>
+                                    <div>Becsült karton: ~${fmt(becsultKarton)}</div>
+                                    <div>~Összegység: <b>${fmt(osszegyseg)}</b></div>
+                                </div>
+                            `;
+                        }).join("")
+                    }
+                </div>
+            </details>
         `;
     }).join("");
 }
@@ -797,33 +896,34 @@ function renderAtlagok(){
     const totalSuly = days.reduce(function(sum,d){ return sum + d.suly; }, 0);
     const totalTetel = days.reduce(function(sum,d){ return sum + d.tetel; }, 0);
     const totalKarton = days.reduce(function(sum,d){ return sum + d.karton; }, 0);
-    const totalEgyseg = days.reduce(function(sum,d){ return sum + d.egyseg; }, 0);
+    const totalRendeles = days.reduce(function(sum,d){ return sum + d.rendeles; }, 0);
+    const totalBecsultKarton = days.reduce(function(sum,d){ return sum + d.becsultKarton; }, 0);
+    const totalOsszegyseg = days.reduce(function(sum,d){ return sum + d.osszegyseg; }, 0);
 
     const avgDaySuly = Math.round(totalSuly / days.length);
     const avgDayTetel = Math.round(totalTetel / days.length);
-    const avgDayEgyseg = Math.round(totalEgyseg / days.length);
-    const avgSzedesSuly = Math.round(totalSuly / closedPickings.length);
+    const avgDayRendeles = Math.round(totalRendeles / days.length);
+    const avgDayOsszegyseg = Math.round(totalOsszegyseg / days.length);
+
+    const avgOrderSuly = totalRendeles ? Math.round(totalSuly / totalRendeles) : 0;
+    const avgOrderTetel = totalRendeles ? Math.round(totalTetel / totalRendeles) : 0;
+    const avgOrderOsszegyseg = totalRendeles ? Math.round(totalOsszegyseg / totalRendeles) : 0;
 
     const currentMonth = today.slice(0,7);
+
     const monthDays = days.filter(function(d){
         return d.datum.startsWith(currentMonth);
     });
 
     const monthSuly = monthDays.reduce(function(sum,d){ return sum + d.suly; }, 0);
     const monthTetel = monthDays.reduce(function(sum,d){ return sum + d.tetel; }, 0);
-    const monthEgyseg = monthDays.reduce(function(sum,d){ return sum + d.egyseg; }, 0);
+    const monthRendeles = monthDays.reduce(function(sum,d){ return sum + d.rendeles; }, 0);
+    const monthOsszegyseg = monthDays.reduce(function(sum,d){ return sum + d.osszegyseg; }, 0);
 
     const monthAvgSuly = monthDays.length ? Math.round(monthSuly / monthDays.length) : 0;
     const monthAvgTetel = monthDays.length ? Math.round(monthTetel / monthDays.length) : 0;
-    const monthAvgEgyseg = monthDays.length ? Math.round(monthEgyseg / monthDays.length) : 0;
-
-    const kartonosNapok = days.filter(function(d){
-        return d.karton > 0;
-    });
-
-    const avgKartonKartonNapokon = kartonosNapok.length
-        ? Math.round(totalKarton / kartonosNapok.length)
-        : 0;
+    const monthAvgRendeles = monthDays.length ? Math.round(monthRendeles / monthDays.length) : 0;
+    const monthAvgOsszegyseg = monthDays.length ? Math.round(monthOsszegyseg / monthDays.length) : 0;
 
     const bestDay = days.reduce(function(best,d){
         return d.suly > best.suly ? d : best;
@@ -837,49 +937,52 @@ function renderAtlagok(){
         <div class="menuCard">
             <div class="menuCardTitle">📊 Összesített adatok</div>
             <div class="menuLine"><span>Lezárt napok</span><b>${fmt(days.length)}</b></div>
-            <div class="menuLine"><span>Lezárt szedések</span><b>${fmt(closedPickings.length)}</b></div>
+            <div class="menuLine"><span>Lezárt blokkok</span><b>${fmt(closedPickings.length)}</b></div>
+            <div class="menuLine"><span>Kiszedett rendelések összesen</span><b>${fmt(totalRendeles)}</b></div>
             <div class="menuLine"><span>Össz súly</span><b>${fmt(totalSuly)} kg</b></div>
             <div class="menuLine"><span>Össz tétel</span><b>${fmt(totalTetel)}</b></div>
             <div class="menuLine"><span>Össz karton</span><b>${fmt(totalKarton)}</b></div>
-            <div class="menuLine"><span>Össz egység</span><b>${fmt(totalEgyseg)}</b></div>
+            <div class="menuLine"><span>Becsült karton</span><b>~${fmt(totalBecsultKarton)}</b></div>
+            <div class="menuLine"><span>~Összegység</span><b>${fmt(totalOsszegyseg)}</b></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">📈 Átlagok</div>
+            <div class="menuCardTitle">📈 Napi átlagok</div>
             <div class="menuLine"><span>Napi átlag súly</span><b>${fmt(avgDaySuly)} kg</b></div>
             <div class="menuLine"><span>Napi átlag tétel</span><b>${fmt(avgDayTetel)}</b></div>
-            <div class="menuLine"><span>Napi átlag egység</span><b>${fmt(avgDayEgyseg)}</b></div>
-            <div class="menuLine"><span>Szedésenkénti átlag súly</span><b>${fmt(avgSzedesSuly)} kg</b></div>
+            <div class="menuLine"><span>Napi átlag rendelés</span><b>${fmt(avgDayRendeles)}</b></div>
+            <div class="menuLine"><span>Napi átlag ~összegység</span><b>${fmt(avgDayOsszegyseg)}</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🛒 Rendelésenkénti átlagok</div>
+            <div class="menuLine"><span>Átlag súly / rendelés</span><b>${fmt(avgOrderSuly)} kg</b></div>
+            <div class="menuLine"><span>Átlag tétel / rendelés</span><b>${fmt(avgOrderTetel)}</b></div>
+            <div class="menuLine"><span>Átlag ~összegység / rendelés</span><b>${fmt(avgOrderOsszegyseg)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">📅 Aktuális havi átlagok</div>
             <div class="menuLine"><span>Havi átlag súly</span><b>${fmt(monthAvgSuly)} kg</b></div>
             <div class="menuLine"><span>Havi átlag tétel</span><b>${fmt(monthAvgTetel)}</b></div>
-            <div class="menuLine"><span>Havi átlag egység</span><b>${fmt(monthAvgEgyseg)}</b></div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">📦 Karton külön statisztika</div>
-            <div class="menuLine"><span>Össz karton</span><b>${fmt(totalKarton)}</b></div>
-            <div class="menuLine"><span>Kartonos napok</span><b>${fmt(kartonosNapok.length)}</b></div>
-            <div class="menuLine"><span>Átlag karton / kartonos nap</span><b>${fmt(avgKartonKartonNapokon)}</b></div>
+            <div class="menuLine"><span>Havi átlag rendelés</span><b>${fmt(monthAvgRendeles)}</b></div>
+            <div class="menuLine"><span>Havi átlag ~összegység</span><b>${fmt(monthAvgOsszegyseg)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">🏆 Legjobb nap</div>
             <div class="menuLine"><span>Dátum</span><b class="good">${bestDay.datum}</b></div>
             <div class="menuLine"><span>Súly alapján</span><b class="good">${fmt(bestDay.suly)} kg</b></div>
-            <div class="menuLine"><span>Tétel</span><b>${fmt(bestDay.tetel)}</b></div>
-            <div class="menuLine"><span>Egység</span><b>${fmt(bestDay.egyseg)}</b></div>
+            <div class="menuLine"><span>Kiszedett rendelés</span><b>${fmt(bestDay.rendeles)}</b></div>
+            <div class="menuLine"><span>~Összegység</span><b>${fmt(bestDay.osszegyseg)}</b></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">🐌 Legrosszabb nap</div>
+            <div class="menuCardTitle">🐌 Leggyengébb nap</div>
             <div class="menuLine"><span>Dátum</span><b class="bad">${worstDay.datum}</b></div>
             <div class="menuLine"><span>Súly alapján</span><b class="bad">${fmt(worstDay.suly)} kg</b></div>
-            <div class="menuLine"><span>Tétel</span><b>${fmt(worstDay.tetel)}</b></div>
-            <div class="menuLine"><span>Egység</span><b>${fmt(worstDay.egyseg)}</b></div>
+            <div class="menuLine"><span>Kiszedett rendelés</span><b>${fmt(worstDay.rendeles)}</b></div>
+            <div class="menuLine"><span>~Összegység</span><b>${fmt(worstDay.osszegyseg)}</b></div>
         </div>
     `;
 }
@@ -888,98 +991,20 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">📦 Szedőcsicska V2 - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.1</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.2</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">V0.1 - Alap rendszer</div>
-            <div>- Tétel bevitel</div>
-            <div>- Súly bevitel</div>
-            <div>- Karton bevitel</div>
-            <div>- Hozzáadás funkció</div>
-            <div>- Napi egység számítás</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.2 - PWA alap</div>
-            <div>- GitHub Pages publikálás</div>
-            <div>- iPhone kezdőképernyő támogatás</div>
-            <div>- Manifest.json hozzáadva</div>
-            <div>- Service Worker alap</div>
-            <div>- Appként megnyitható telefonon</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.3 - Raktári optimalizálás</div>
-            <div>- Numerikus billentyűzet</div>
-            <div>- Egykezes használat</div>
-            <div>- Nagy beviteli mezők</div>
-            <div>- Karton mód kapcsoló</div>
-            <div>- "Megint péntek?" átnevezve "Karton mód"-ra</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.4 - Adatkezelés</div>
-            <div>- Napi adatok mentése localStorage-ba</div>
-            <div>- Frissítés után is megmaradnak az adatok</div>
-            <div>- Dátum alapú adattárolás előkészítve</div>
-            <div>- Lezárt szedések külön mentése</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.5 - Fix súlykijelző</div>
-            <div>- Állandó felső súlykijelző hozzáadva</div>
-            <div>- Billentyűzet mellett is látható</div>
-            <div>- 0 - 9999 kg: piros</div>
-            <div>- 10000 - 12999 kg: zöld</div>
-            <div>- 13000+ kg: sárga</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.6 - UI tisztítás</div>
-            <div>- Felesleges főképernyős gombok eltávolítva</div>
-            <div>- Nagy alsó zöld műszaklezáró gomb törölve</div>
-            <div>- Kisebb "Szedés lezárása" gomb hozzáadva</div>
-            <div>- Főképernyő egyszerűsítve</div>
-            <div>- Tétel / Karton / Egység statisztika visszarakva</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.7 - Biztonsági ellenőrzés</div>
-            <div>- 750 kg feletti súlynál megerősítő ablak</div>
-            <div>- "Kurva érdekes.. Biztos ennyi?" figyelmeztetés</div>
-            <div>- 0 tétel tiltása</div>
-            <div>- Túl magas tételnél megerősítés</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.8 - Menü rendszer</div>
-            <div>- Menü gomb hozzáadva</div>
-            <div>- Szedések fül</div>
-            <div>- Napok fül</div>
-            <div>- Átlagok fül</div>
-            <div>- Lezárt szedések visszanézése</div>
-            <div>- Napok dátum szerinti összesítése</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V0.9 - Statisztika javítás</div>
-            <div>- Egység számítás javítva</div>
-            <div>- Új képlet: Egység = Súly + Tétel</div>
-            <div>- Karton külön statisztika lett</div>
-            <div>- Karton nem számít bele az átlagokba</div>
-            <div>- Legjobb és legrosszabb nap súly alapján számolódik</div>
-            <div>- Átlagok pontosítása</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">V1.0 - App ikon és apposítás</div>
-            <div>- Targoncás app ikon hozzáadva</div>
-            <div>- Icon.png beállítva a manifest fájlban</div>
-            <div>- Kezdőképernyős app megjelenés javítva</div>
-            <div>- Név / copyright rész hozzáadva</div>
-            <div>- © 2026 Horváth Balázs · Szedőcsicska V2 · All rights reserved.</div>
+            <div class="menuCardTitle">V1.2 - Menü és statisztika átalakítás</div>
+            <div>- Szedések és Napok összevonva Előzmények nézetbe</div>
+            <div>- Kiszedett rendelések száma hozzáadva</div>
+            <div>- 1 hozzáadás = 1 rendelés / bolt</div>
+            <div>- Egység átnevezve ~Összegységre</div>
+            <div>- ~Összegység képlete: súly + tétel + becsült karton</div>
+            <div>- Becsült karton arány: 1000 tétel ≈ 2000 karton</div>
+            <div>- Changelog nézetből eltűnik az adat törlése gomb</div>
+            <div>- Menü görgetése finomítva</div>
         </div>
 
         <div class="menuCard">
@@ -987,23 +1012,37 @@ function renderChangelog(){
             <div>- Changelog menüpont hozzáadva</div>
             <div>- Adatok törlése gomb hozzáadva</div>
             <div>- Törlés előtt dupla megerősítés</div>
-            <div>- Törléshez TORLES kód beírása szükséges</div>
             <div>- Napi idézet funkció hozzáadva</div>
-            <div>- Aznapi idézet dátum szerint mentve marad</div>
-            <div>- Másnap új idézet jelenik meg</div>
             <div>- Szedés lezárása gomb piros színt kapott</div>
-            <div>- Főképernyő használhatósága javítva</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.0 - App ikon és apposítás</div>
+            <div>- App ikon hozzáadva</div>
+            <div>- Kezdőképernyős app megjelenés javítva</div>
+            <div>- Copyright rész hozzáadva</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">Korábbi verziók</div>
+            <div>- Alap tétel / súly / karton bevitel</div>
+            <div>- Karton mód</div>
+            <div>- LocalStorage mentés</div>
+            <div>- Lezárt szedések mentése</div>
+            <div>- Felső súlykijelző</div>
+            <div>- Menü rendszer</div>
+            <div>- Átlagok és statisztikák</div>
+            <div>- 750 kg feletti figyelmeztetés</div>
+            <div>- 0 tétel tiltása</div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">Tervezett fejlesztések</div>
             <div>- App átnevezése Súlyvadász névre</div>
-            <div>- Szebb UI / apposabb kinézet</div>
-            <div>- Szedések és Napok összevonása Előzmények nézetbe</div>
-            <div>- Menü továbbcsiszolása</div>
-            <div>- Changelog görgetés javítása</div>
+            <div>- Szebb dark UI</div>
+            <div>- Menü görgetés további finomítása</div>
+            <div>- Hibás bevitelek javítása / törlése</div>
             <div>- Export lehetőség később</div>
-            <div>- Hibás bevitelek könnyebb javítása</div>
         </div>
     `;
 }
@@ -1037,12 +1076,7 @@ function deleteAllData(){
     closedPickings = [];
 
     today = getTodayKey();
-
-    data[today] = {
-        tetel:0,
-        karton:0,
-        suly:0
-    };
+    data[today] = createEmptyDay();
 
     saveData();
     saveClosed();
@@ -1058,7 +1092,7 @@ function deleteAllData(){
     render();
 
     if(document.getElementById("menuOverlay").style.display === "block"){
-        showMenuTab("szedesek");
+        showMenuTab("elozmenyek");
     }
 
     alert("Minden eddigi adat törölve.");
