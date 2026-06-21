@@ -4,125 +4,220 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<title>Szedőcsicska V2</title>
+<title>Súlyvadász</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111827">
 
 <style>
+:root{
+    --bg:#0f172a;
+    --panel:#111827;
+    --card:#1e293b;
+    --card2:#273449;
+    --input:#334155;
+    --line:#334155;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --green:#22c55e;
+    --greenDark:#14532d;
+    --red:#ef4444;
+    --redDark:#7f1d1d;
+    --yellow:#eab308;
+    --shadow:0 14px 34px rgba(0,0,0,.28);
+}
+
+*{
+    -webkit-tap-highlight-color:transparent;
+}
+
 body{
-    margin:0;
-    padding:16px;
-    padding-bottom:40px;
-    background:#111827;
-    color:white;
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    margin:0 auto;
+    padding:14px;
+    padding-bottom:42px;
+    max-width:560px;
+    min-height:100vh;
+    background:
+        radial-gradient(circle at top left, rgba(34,197,94,.10), transparent 34%),
+        linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    box-sizing:border-box;
 }
 
 .header{
-    background:#374151;
+    background:linear-gradient(135deg, #1e293b, #111827);
     padding:14px;
-    border-radius:14px;
+    border-radius:20px;
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
-    font-size:20px;
-    font-weight:800;
+    gap:12px;
     margin-bottom:12px;
+    border:1px solid rgba(148,163,184,.16);
+    box-shadow:var(--shadow);
+}
+
+.brandBlock{
+    min-width:0;
+}
+
+.appName{
+    font-size:22px;
+    font-weight:950;
+    letter-spacing:-.4px;
+    line-height:1.05;
+}
+
+.appSub{
+    margin-top:4px;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.2px;
 }
 
 .menuBtn{
     width:auto;
-    padding:10px 14px;
+    padding:10px 13px;
     font-size:14px;
-    border-radius:12px;
-    background:#111827;
-    color:white;
+    border-radius:14px;
+    background:#0b1220;
+    color:var(--text);
+    border:1px solid rgba(148,163,184,.18);
+    box-shadow:0 8px 16px rgba(0,0,0,.18);
 }
 
 .card{
-    background:#1f2937;
-    border-radius:14px;
+    background:linear-gradient(180deg, var(--card), #1b2535);
+    border-radius:18px;
     padding:12px;
     margin-bottom:10px;
+    border:1px solid rgba(148,163,184,.12);
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
 }
 
 input{
     width:100%;
     box-sizing:border-box;
-    border:none;
-    border-radius:12px;
-    padding:14px;
-    font-size:28px;
-    background:#374151;
-    color:white;
-    font-weight:700;
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:15px;
+    padding:15px 14px;
+    font-size:31px;
+    background:var(--input);
+    color:var(--text);
+    font-weight:900;
+    outline:none;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.20);
+}
+
+input:focus{
+    border-color:rgba(34,197,94,.75);
+    box-shadow:0 0 0 3px rgba(34,197,94,.16), inset 0 2px 8px rgba(0,0,0,.20);
 }
 
 button{
     width:100%;
     border:none;
-    border-radius:14px;
+    border-radius:16px;
     padding:16px;
     font-size:18px;
-    font-weight:800;
+    font-weight:900;
+    cursor:pointer;
+}
+
+button:active{
+    transform:translateY(1px);
 }
 
 .grayBtn{
-    background:#4b5563;
-    color:white;
+    background:linear-gradient(135deg, #22c55e, #16a34a);
+    color:#04130a;
     margin-bottom:10px;
+    box-shadow:0 12px 24px rgba(22,163,74,.20);
 }
 
 .closeDayBtn{
-    background:#7f1d1d;
+    background:linear-gradient(135deg, #7f1d1d, #991b1b);
     color:white;
     margin-top:12px;
-    padding:12px;
+    padding:13px;
     font-size:15px;
-    font-weight:800;
-    border:1px solid #ef4444;
+    font-weight:900;
+    border:1px solid rgba(248,113,113,.55);
+    box-shadow:0 10px 22px rgba(127,29,29,.22);
 }
 
 .dangerBtn{
-    background:#7f1d1d;
+    background:linear-gradient(135deg, #7f1d1d, #450a0a);
     color:white;
     margin-top:16px;
     padding:14px;
     font-size:15px;
-    font-weight:800;
-    border:1px solid #ef4444;
+    font-weight:900;
+    border:1px solid rgba(239,68,68,.7);
 }
 
 .stat{
-    background:#1f2937;
+    background:linear-gradient(180deg, var(--card), #182233);
     padding:14px;
-    border-radius:14px;
+    border-radius:20px;
     margin-top:10px;
     margin-bottom:10px;
+    border:1px solid rgba(148,163,184,.13);
+    box-shadow:var(--shadow);
 }
 
 .row{
     display:flex;
     justify-content:space-between;
-    gap:10px;
+    align-items:center;
+    gap:12px;
+    font-size:16px;
+    margin:0;
+    padding:10px 0;
+    border-bottom:1px solid rgba(148,163,184,.10);
+    color:#dbeafe;
+}
+
+.row:last-child{
+    border-bottom:none;
+}
+
+.row span{
     font-size:18px;
-    margin:6px 0;
+    font-weight:950;
+    color:#fff;
+}
+
+.totalRow{
+    margin-top:4px;
+    padding-top:13px;
+    color:#bbf7d0;
+}
+
+.totalRow span{
+    color:var(--green);
+    font-size:22px;
 }
 
 .creatorFooter{
     text-align:center;
     font-size:12px;
-    opacity:0.55;
+    opacity:0.58;
     margin-top:18px;
     margin-bottom:10px;
     color:#d1d5db;
 }
-    
+
 .small{
-    font-size:13px;
-    opacity:0.7;
+    font-size:12px;
+    color:var(--muted);
+    opacity:1;
+    font-weight:850;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    margin-bottom:7px;
 }
 
 .weightBanner{
@@ -132,26 +227,30 @@ button{
     background:#dc2626;
     color:white;
     text-align:center;
-    font-size:18px;
-    font-weight:800;
-    padding:10px;
-    border-radius:12px;
+    font-size:20px;
+    font-weight:950;
+    padding:12px;
+    border-radius:18px;
     margin-bottom:12px;
-    box-shadow:0 4px 12px rgba(0,0,0,.3);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 12px 28px rgba(0,0,0,.35);
+    letter-spacing:.2px;
 }
 
 .quoteBox{
     display:none;
-    background:#1f2937;
-    color:#d1d5db;
-    border-left:4px solid #22c55e;
-    border-radius:12px;
+    background:rgba(30,41,59,.78);
+    color:#cbd5e1;
+    border-left:4px solid var(--green);
+    border-radius:16px;
     padding:10px 12px;
     margin-bottom:12px;
     font-size:13px;
-    font-weight:600;
+    font-weight:700;
     line-height:1.35;
-    opacity:0.95;
+    border-top:1px solid rgba(148,163,184,.10);
+    border-right:1px solid rgba(148,163,184,.10);
+    border-bottom:1px solid rgba(148,163,184,.10);
 }
 
 #kartonBox{
@@ -163,16 +262,17 @@ button{
     display:none;
     position:fixed;
     inset:0;
-    background:rgba(0,0,0,.65);
+    background:rgba(2,6,23,.72);
+    backdrop-filter:blur(8px);
     z-index:2000;
     padding:14px;
     box-sizing:border-box;
 }
 
 .menuPanel{
-    background:#111827;
-    border:1px solid #374151;
-    border-radius:18px;
+    background:linear-gradient(180deg, #0f172a, #111827);
+    border:1px solid rgba(148,163,184,.18);
+    border-radius:22px;
     height:calc(100vh - 28px);
     height:calc(100dvh - 28px);
     overflow-y:auto;
@@ -180,6 +280,7 @@ button{
     overscroll-behavior:contain;
     padding:14px;
     box-sizing:border-box;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
 }
 
 .menuHeader{
@@ -191,16 +292,18 @@ button{
 }
 
 .menuTitle{
-    font-size:22px;
-    font-weight:900;
+    font-size:23px;
+    font-weight:950;
+    letter-spacing:-.3px;
 }
 
 .menuClose{
     width:auto;
     padding:10px 14px;
-    background:#374151;
+    background:#1e293b;
     color:white;
     font-size:16px;
+    border:1px solid rgba(148,163,184,.16);
 }
 
 .menuTabs{
@@ -208,62 +311,87 @@ button{
     grid-template-columns:1fr 1fr;
     gap:8px;
     margin-bottom:12px;
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:linear-gradient(180deg, #0f172a 0%, rgba(15,23,42,.92) 100%);
+    padding-bottom:8px;
 }
 
 .menuTab{
     padding:12px 8px;
     font-size:14px;
-    background:#374151;
-    color:white;
+    background:#1e293b;
+    color:#dbeafe;
+    border:1px solid rgba(148,163,184,.13);
 }
 
 .menuTab.active{
-    background:#22c55e;
-    color:#000;
+    background:linear-gradient(135deg, #22c55e, #16a34a);
+    color:#031407;
 }
 
 .menuCard{
-    background:#1f2937;
-    border-radius:14px;
-    padding:12px;
+    background:linear-gradient(180deg, var(--card), #182233);
+    border-radius:18px;
+    padding:13px;
     margin-bottom:10px;
+    border:1px solid rgba(148,163,184,.12);
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
 }
 
 .menuCardTitle{
     font-size:16px;
-    font-weight:900;
-    margin-bottom:6px;
+    font-weight:950;
+    margin-bottom:7px;
+    letter-spacing:-.1px;
 }
 
 .menuLine{
     display:flex;
     justify-content:space-between;
-    gap:10px;
-    margin:5px 0;
+    align-items:center;
+    gap:12px;
+    padding:7px 0;
+    margin:0;
     font-size:15px;
+    border-bottom:1px solid rgba(148,163,184,.09);
+    color:#cbd5e1;
+}
+
+.menuLine:last-child{
+    border-bottom:none;
+}
+
+.menuLine b{
+    color:#fff;
+    font-weight:950;
+    text-align:right;
 }
 
 .good{
-    color:#22c55e;
-    font-weight:900;
+    color:var(--green) !important;
+    font-weight:950;
 }
 
 .bad{
-    color:#ef4444;
-    font-weight:900;
+    color:#f87171 !important;
+    font-weight:950;
 }
 
 .empty{
-    opacity:.75;
+    opacity:.78;
     text-align:center;
-    padding:18px;
+    padding:20px;
+    background:rgba(30,41,59,.55);
+    border-radius:18px;
 }
 
 .historySummary{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
+    gap:12px;
     list-style:none;
     cursor:pointer;
 }
@@ -273,48 +401,53 @@ button{
 }
 
 .historyTotal{
-    font-size:18px;
-    font-weight:900;
-    color:#22c55e;
+    font-size:19px;
+    font-weight:950;
+    color:var(--green);
     white-space:nowrap;
+    background:rgba(34,197,94,.10);
+    border:1px solid rgba(34,197,94,.18);
+    border-radius:14px;
+    padding:8px 10px;
 }
 
 .historyDetails{
     margin-top:12px;
     padding-top:10px;
-    border-top:1px solid #374151;
+    border-top:1px solid rgba(148,163,184,.14);
 }
 
 .historyPick{
-    background:#111827;
-    border-radius:12px;
-    padding:10px;
+    background:#0f172a;
+    border-radius:14px;
+    padding:11px;
     margin-top:8px;
     font-size:14px;
+    border:1px solid rgba(148,163,184,.10);
 }
 
-
 .privacyBtn{
-    background:#0f172a;
+    background:linear-gradient(135deg, #1e293b, #0f172a);
     color:#e5e7eb;
     margin-bottom:10px;
-    border:1px solid #4b5563;
+    border:1px solid rgba(148,163,184,.18);
+    font-size:15px;
+    padding:13px;
 }
 
 .privacyBtn.active{
-    background:#14532d;
+    background:linear-gradient(135deg, #14532d, #166534);
     color:#fff;
-    border-color:#22c55e;
+    border-color:rgba(34,197,94,.65);
 }
 
 .privacyHint{
     text-align:center;
     font-size:12px;
-    opacity:.7;
+    color:var(--muted);
     margin-top:-4px;
     margin-bottom:10px;
 }
-
 
 .privacyMode #menuContent .menuLine b,
 .privacyMode #menuContent .historyTotal,
@@ -324,35 +457,34 @@ button{
     user-select:none;
 }
 
-
 .settingNote{
     font-size:13px;
-    opacity:.75;
-    line-height:1.35;
+    color:var(--muted);
+    line-height:1.38;
     margin:8px 0 12px;
 }
 
 .settingBtn{
-    background:#374151;
+    background:#1e293b;
     color:white;
-    border:1px solid #4b5563;
-    padding:12px;
+    border:1px solid rgba(148,163,184,.18);
+    padding:13px;
     font-size:15px;
 }
 
 .settingBtn.active{
-    background:#14532d;
-    border-color:#22c55e;
+    background:linear-gradient(135deg, #14532d, #166534);
+    border-color:rgba(34,197,94,.65);
     color:white;
 }
 
 .deleteMiniBtn{
     background:#7f1d1d;
     color:white;
-    border:1px solid #ef4444;
+    border:1px solid rgba(239,68,68,.72);
     padding:9px 10px;
     font-size:13px;
-    border-radius:10px;
+    border-radius:12px;
     margin-top:8px;
 }
 
@@ -362,17 +494,37 @@ button{
     border:1px solid #7f1d1d;
     padding:10px;
     font-size:13px;
-    border-radius:10px;
+    border-radius:12px;
     margin-top:12px;
 }
 
+@media (max-width:380px){
+    body{
+        padding:12px;
+    }
+
+    .appName{
+        font-size:20px;
+    }
+
+    input{
+        font-size:29px;
+    }
+
+    .menuTab{
+        font-size:13px;
+    }
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-    <div>📦 Szedőcsicska V2</div>
+    <div class="brandBlock">
+        <div class="appName">⚖️ Súlyvadász</div>
+        <div class="appSub">Raktári napi összesítő</div>
+    </div>
     <button class="menuBtn" onclick="openMenu()">☰ Menü</button>
 </div>
 
@@ -412,7 +564,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
     <div class="row">Tétel <span id="st">0</span></div>
     <div class="row">Karton <span id="sk">0</span></div>
     <div class="row">Kiszedett rendelések <span id="sr">0</span></div>
-    <div class="row">~Összegység <span id="sum">0</span></div>
+    <div class="row totalRow">~Összegység <span id="sum">0</span></div>
 </div>
 
 <button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
@@ -422,7 +574,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Szedőcsicska V2 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -1266,10 +1418,22 @@ function renderBeallitasok(){
 function renderChangelog(){
     return `
         <div class="menuCard">
-            <div class="menuCardTitle">📦 Szedőcsicska V2 - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.8</b></div>
+            <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.9</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.9 - UI polish</div>
+            <div>- Csak kinézeti és elrendezési finomítások</div>
+            <div>- Súlyvadász név kirakva a fejlécbe</div>
+            <div>- Modernebb dark színvilág</div>
+            <div>- Átláthatóbb stat kártya</div>
+            <div>- ~Összegység erősebben kiemelve</div>
+            <div>- Menü kártyák és gombok finomítva</div>
+            <div>- Logika, számítás és adatkezelés nem változott</div>
+        </div>
+
 
 
         <div class="menuCard">
@@ -1368,7 +1532,7 @@ function renderChangelog(){
 
         <div class="menuCard">
             <div class="menuCardTitle">Tervezett fejlesztések</div>
-            <div>- App átnevezése Súlyvadász névre</div>
+            <div>- További UI finomítások</div>
             <div>- Szebb dark UI</div>
             <div>- Menü görgetés további finomítása</div>
             <div>- Hibás bevitelek javítása / törlése</div>
