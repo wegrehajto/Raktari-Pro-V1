@@ -494,10 +494,44 @@ function add(){
 }
 
 function render(){
+
     if(!data[today]){
         data[today] = { tetel:0, karton:0, suly:0 };
         saveData();
     }
+
+    const d = data[today];
+
+    const banner = document.getElementById("weightBanner");
+
+    if(banner){
+        banner.innerText = fmt(d.suly) + " kg";
+
+        if(d.suly < 10000){
+            banner.style.background = "#dc2626";
+            banner.style.color = "#fff";
+        }
+        else if(d.suly < 13000){
+            banner.style.background = "#16a34a";
+            banner.style.color = "#fff";
+        }
+        else{
+            banner.style.background = "#eab308";
+            banner.style.color = "#000";
+        }
+    }
+
+    const stEl = document.getElementById("st");
+    const skEl = document.getElementById("sk");
+    const sumEl = document.getElementById("sum");
+
+    if(stEl) stEl.innerText = fmt(d.tetel);
+    if(skEl) skEl.innerText = fmt(d.karton);
+
+    if(sumEl){
+        sumEl.innerText = fmt(getEgyseg(d.tetel, d.suly));
+    }
+}
 
     const d = data[today];
 
