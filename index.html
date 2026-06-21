@@ -292,6 +292,58 @@ button{
     margin-top:8px;
     font-size:14px;
 }
+
+
+.privacyBtn{
+    background:#0f172a;
+    color:#e5e7eb;
+    margin-bottom:10px;
+    border:1px solid #4b5563;
+}
+
+.privacyBtn.active{
+    background:#14532d;
+    color:#fff;
+    border-color:#22c55e;
+}
+
+.privacyHint{
+    text-align:center;
+    font-size:12px;
+    opacity:.7;
+    margin-top:-4px;
+    margin-bottom:10px;
+}
+
+
+.privacyMode #menuContent .menuLine b,
+.privacyMode #menuContent .historyTotal,
+.privacyMode #menuContent .historySummary .small,
+.privacyMode #menuContent .historyPick{
+    filter:blur(7px);
+    user-select:none;
+}
+
+.deleteMiniBtn{
+    background:#7f1d1d;
+    color:white;
+    border:1px solid #ef4444;
+    padding:9px 10px;
+    font-size:13px;
+    border-radius:10px;
+    margin-top:8px;
+}
+
+.deleteDayBtn{
+    background:#451a1a;
+    color:#fecaca;
+    border:1px solid #7f1d1d;
+    padding:10px;
+    font-size:13px;
+    border-radius:10px;
+    margin-top:12px;
+}
+
 </style>
 </head>
 
@@ -308,6 +360,14 @@ button{
 
 <div id="quoteBox" class="quoteBox">
     Mai bölcsesség...
+</div>
+
+<button class="privacyBtn" onclick="toggleHiddenMode()" id="privacyBtn">
+🙈 Rejtett mód: KI
+</button>
+
+<div id="privacyHint" class="privacyHint" style="display:none;">
+A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </div>
 
 <button class="grayBtn" onclick="toggleKartonMod()" id="pbtn">
@@ -382,6 +442,7 @@ Karton mód
 
 <script>
 let kartonMod = false;
+let hiddenMode = localStorage.getItem("hiddenMode") === "1";
 
 function getTodayKey(){
     const d = new Date();
@@ -430,6 +491,23 @@ function saveClosed(){
 
 function fmt(n){
     return Number(n || 0).toLocaleString("hu-HU");
+}
+
+
+function hiddenText(suffix){
+    return "••••" + (suffix || "");
+}
+
+function showNumber(n){
+    return hiddenMode ? "••••" : fmt(n);
+}
+
+function showKg(n){
+    return hiddenMode ? "•••• kg" : fmt(n) + " kg";
+}
+
+function showApprox(n){
+    return hiddenMode ? "~••••" : "~" + fmt(n);
 }
 
 function getBecsultKarton(tetel){
@@ -492,6 +570,36 @@ function showDailyQuote(){
     quoteBox.style.display = "block";
 }
 
+
+function updateHiddenModeUI(){
+    const btn = document.getElementById("privacyBtn");
+    const hint = document.getElementById("privacyHint");
+
+    document.body.classList.toggle("privacyMode", hiddenMode);
+
+    if(btn){
+        btn.classList.toggle("active", hiddenMode);
+        btn.innerText = hiddenMode ? "🙈 Rejtett mód: BE" : "👁️ Rejtett mód: KI";
+    }
+
+    if(hint){
+        hint.style.display = hiddenMode ? "block" : "none";
+    }
+}
+
+function toggleHiddenMode(){
+    hiddenMode = !hiddenMode;
+    localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
+    updateHiddenModeUI();
+    render();
+
+    const overlay = document.getElementById("menuOverlay");
+    if(overlay && overlay.style.display === "block"){
+        const activeTab = document.querySelector(".menuTab.active");
+        showMenuTab(activeTab ? activeTab.dataset.tab : "elozmenyek");
+    }
+}
+
 function toggleKartonMod(){
     kartonMod = !kartonMod;
 
@@ -532,7 +640,7 @@ function add(){
         const biztosTetel = confirm(
             "Kurva érdekes..\n\n" +
             "Biztos ennyi tétel?\n\n" +
-            t + " tétel"
+            (hiddenMode ? "" : t + " tétel")
         );
 
         if(!biztosTetel){
@@ -545,7 +653,7 @@ function add(){
         const biztos = confirm(
             "Kurva érdekes..\n\n" +
             "Biztos ennyi?\n\n" +
-            s + " kg"
+            (hiddenMode ? "" : s + " kg")
         );
 
         if(!biztos){
@@ -582,19 +690,26 @@ function render(){
     const banner = document.getElementById("weightBanner");
 
     if(banner){
-        banner.innerText = fmt(d.suly) + " kg";
-
-        if(d.suly < 10000){
-            banner.style.background = "#dc2626";
-            banner.style.color = "#fff";
-        }
-        else if(d.suly < 13000){
-            banner.style.background = "#16a34a";
+        if(hiddenMode){
+            banner.innerText = "Rejtett mód";
+            banner.style.background = "#374151";
             banner.style.color = "#fff";
         }
         else{
-            banner.style.background = "#eab308";
-            banner.style.color = "#000";
+            banner.innerText = fmt(d.suly) + " kg";
+
+            if(d.suly < 10000){
+                banner.style.background = "#dc2626";
+                banner.style.color = "#fff";
+            }
+            else if(d.suly < 13000){
+                banner.style.background = "#16a34a";
+                banner.style.color = "#fff";
+            }
+            else{
+                banner.style.background = "#eab308";
+                banner.style.color = "#000";
+            }
         }
     }
 
@@ -603,10 +718,10 @@ function render(){
     const srEl = document.getElementById("sr");
     const sumEl = document.getElementById("sum");
 
-    if(stEl) stEl.innerText = fmt(d.tetel);
-    if(skEl) skEl.innerText = fmt(d.karton);
-    if(srEl) srEl.innerText = fmt(d.rendeles);
-    if(sumEl) sumEl.innerText = fmt(getOsszegyseg(d.tetel, d.suly));
+    if(stEl) stEl.innerText = showNumber(d.tetel);
+    if(skEl) skEl.innerText = showNumber(d.karton);
+    if(srEl) srEl.innerText = showNumber(d.rendeles);
+    if(sumEl) sumEl.innerText = showNumber(getOsszegyseg(d.tetel, d.suly));
 }
 
 function closePicking(){
@@ -664,12 +779,12 @@ function closePicking(){
 
     alert(
         "Szedés lezárva!\n\n" +
-        "Súly: " + fmt(record.suly) + " kg\n" +
-        "Tétel: " + fmt(record.tetel) + "\n" +
-        "Karton: " + fmt(record.karton) + "\n" +
-        "Kiszedett rendelések: " + fmt(record.rendeles) + "\n" +
-        "Becsült karton: ~" + fmt(record.becsultKarton) + "\n" +
-        "~Összegység: " + fmt(record.osszegyseg)
+        "Súly: " + showKg(record.suly) + "\n" +
+        "Tétel: " + showNumber(record.tetel) + "\n" +
+        "Karton: " + showNumber(record.karton) + "\n" +
+        "Kiszedett rendelések: " + showNumber(record.rendeles) + "\n" +
+        "Becsült karton: " + showApprox(record.becsultKarton) + "\n" +
+        "~Összegység: " + showNumber(record.osszegyseg)
     );
 }
 
@@ -854,6 +969,10 @@ function renderElozmenyek(){
                     <div class="menuLine"><span>Becsült karton</span><b>~${fmt(d.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(d.osszegyseg)}</b></div>
 
+                    <button class="deleteDayBtn" onclick="deleteDayData('${d.datum}')">
+                        🗑️ Ezt a napot törlöm a statból
+                    </button>
+
                     <div class="small" style="margin-top:12px;">
                         Napi részletek:
                     </div>
@@ -876,6 +995,9 @@ function renderElozmenyek(){
                                     <div>Kiszedett rendelések: ${fmt(rendeles)}</div>
                                     <div>Becsült karton: ~${fmt(becsultKarton)}</div>
                                     <div>~Összegység: <b>${fmt(osszegyseg)}</b></div>
+                                    <button class="deleteMiniBtn" onclick="deleteClosedPicking(${Number(r.id || 0)})">
+                                        🗑️ Ezt a lezárást törlöm
+                                    </button>
                                 </div>
                             `;
                         }).join("")
@@ -1069,8 +1191,28 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">📦 Szedőcsicska V2 - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.4</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.6</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.6 - Rejtett mód finomítás és külön törlés</div>
+            <div>- Rejtett módban a beviteli mezők már nem pöttyöződnek ki</div>
+            <div>- Írás közben látod, mit írsz be</div>
+            <div>- Az Előzményekben külön törölhető egy lezárás</div>
+            <div>- Az Előzményekben külön törölhető egy teljes nap</div>
+            <div>- A teszt lezárások így nem rontják el a statisztikát</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.5 - Rejtett mód</div>
+            <div>- Rejtett mód ki/be kapcsoló hozzáadva</div>
+            <div>- Rejtett módban a főképernyős számok nem láthatók</div>
+            <div>- A felső súlykijelző nem árulja el, hol jársz</div>
+            <div>- A főképernyős statisztikai számok rejtve jelennek meg</div>
+            <div>- Menüben az érzékeny számok el vannak homályosítva</div>
+            <div>- A beállítás megmarad újranyitás után is</div>
         </div>
 
         <div class="menuCard">
@@ -1141,6 +1283,81 @@ function renderChangelog(){
     `;
 }
 
+function refreshActiveMenu(){
+    const overlay = document.getElementById("menuOverlay");
+
+    if(overlay && overlay.style.display === "block"){
+        const activeTab = document.querySelector(".menuTab.active");
+        showMenuTab(activeTab ? activeTab.dataset.tab : "elozmenyek");
+    }
+}
+
+function deleteClosedPicking(id){
+    const numericId = Number(id || 0);
+
+    if(!numericId){
+        alert("Ezt a régi bejegyzést nem tudom külön törölni, mert nincs azonosítója.");
+        return;
+    }
+
+    const record = closedPickings.find(function(r){
+        return Number(r.id || 0) === numericId;
+    });
+
+    if(!record){
+        alert("Nem találom ezt a lezárást.");
+        return;
+    }
+
+    const biztos = confirm(
+        "Biztosan törlöd ezt a lezárást a statisztikából?\n\n" +
+        (record.datum || "") + " " + (record.ido || "") + "\n" +
+        "Súly: " + fmt(record.suly) + " kg\n" +
+        "Tétel: " + fmt(record.tetel) + "\n\n" +
+        "Ez csak ezt az egy bejegyzést törli."
+    );
+
+    if(!biztos) return;
+
+    closedPickings = closedPickings.filter(function(r){
+        return Number(r.id || 0) !== numericId;
+    });
+
+    saveClosed();
+    refreshActiveMenu();
+
+    alert("A kiválasztott lezárás törölve lett a statisztikából.");
+}
+
+function deleteDayData(datum){
+    const count = closedPickings.filter(function(r){
+        return (r.datum || "Ismeretlen") === datum;
+    }).length;
+
+    if(count === 0){
+        alert("Ehhez a naphoz nincs törölhető lezárás.");
+        return;
+    }
+
+    const biztos = confirm(
+        "Biztosan törlöd ezt a teljes napot a statisztikából?\n\n" +
+        datum + "\n" +
+        "Törölt lezárások száma: " + count + "\n\n" +
+        "Ez a többi napot nem bántja."
+    );
+
+    if(!biztos) return;
+
+    closedPickings = closedPickings.filter(function(r){
+        return (r.datum || "Ismeretlen") !== datum;
+    });
+
+    saveClosed();
+    refreshActiveMenu();
+
+    alert("A kiválasztott nap törölve lett a statisztikából.");
+}
+
 function deleteAllData(){
     const biztos = confirm(
         "Biztosan törölni akarod az összes eddigi adatot?\n\n" +
@@ -1192,6 +1409,7 @@ function deleteAllData(){
     alert("Minden eddigi adat törölve.");
 }
 
+updateHiddenModeUI();
 render();
 showDailyQuote();
 
