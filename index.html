@@ -444,36 +444,53 @@ function toggleKartonMod(){
 }
 
 function add(){
-    const t = Number(document.getElementById("t").value) || 0;
-    const k = Number(document.getElementById("k").value) || 0;
-    const s = Number(document.getElementById("s").value) || 0;
+
+    const tInput = document.getElementById("t");
+    const kInput = document.getElementById("k");
+    const sInput = document.getElementById("s");
+
+    const t = Number(tInput.value) || 0;
+    const k = Number(kInput.value) || 0;
+    const s = Number(sInput.value) || 0;
+
+    if(t === 0){
+        alert("0 tétellel nem lehet hozzáadni.");
+        tInput.focus();
+        return;
+    }
 
     if(s > 750){
         const biztos = confirm(
-            "Tolnak csicska?\n\n" +
-            s + " kg került megadásra."
+            "Kurva érdekes..\n\n" +
+            "Biztos ennyi?\n\n" +
+            s + " kg"
         );
 
         if(!biztos){
-            document.getElementById("s").focus();
+            sInput.focus();
             return;
         }
     }
 
-    if(t === 0 && k === 0 && s === 0) return;
+    if(!data[today]){
+        data[today] = { tetel:0, karton:0, suly:0 };
+    }
 
     data[today].tetel += t;
     data[today].karton += kartonMod ? k : 0;
     data[today].suly += s;
 
     saveData();
+
+    tInput.value = "";
+    kInput.value = "";
+    sInput.value = "";
+
     render();
 
-    document.getElementById("t").value = "";
-    document.getElementById("k").value = "";
-    document.getElementById("s").value = "";
-
-    document.getElementById("t").focus();
+    setTimeout(function(){
+        tInput.focus();
+    }, 100);
 }
 
 function render(){
