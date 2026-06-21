@@ -319,7 +319,7 @@ button{
 .privacyMode #menuContent .menuLine b,
 .privacyMode #menuContent .historyTotal,
 .privacyMode #menuContent .historySummary .small,
-.privacyMode #menuContent .historyPick{
+.privacyMode #menuContent .historyPick div{
     filter:blur(7px);
     user-select:none;
 }
@@ -454,8 +454,27 @@ function getTodayKey(){
 
 let today = getTodayKey();
 
-let data = JSON.parse(localStorage.getItem("data") || "{}");
-let closedPickings = JSON.parse(localStorage.getItem("closedPickings") || "[]");
+function loadJson(key, fallback){
+    try{
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : fallback;
+    }
+    catch(e){
+        localStorage.removeItem(key);
+        return fallback;
+    }
+}
+
+let data = loadJson("data", {});
+let closedPickings = loadJson("closedPickings", []);
+
+if(!data || typeof data !== "object" || Array.isArray(data)){
+    data = {};
+}
+
+if(!Array.isArray(closedPickings)){
+    closedPickings = [];
+}
 
 function createEmptyDay(){
     return {
@@ -468,15 +487,21 @@ function createEmptyDay(){
 
 function ensureTodayData(){
     today = getTodayKey();
+    let changed = false;
 
     if(!data[today]){
         data[today] = createEmptyDay();
+        changed = true;
     }
 
-    if(data[today].tetel === undefined) data[today].tetel = 0;
-    if(data[today].karton === undefined) data[today].karton = 0;
-    if(data[today].suly === undefined) data[today].suly = 0;
-    if(data[today].rendeles === undefined) data[today].rendeles = 0;
+    if(data[today].tetel === undefined){ data[today].tetel = 0; changed = true; }
+    if(data[today].karton === undefined){ data[today].karton = 0; changed = true; }
+    if(data[today].suly === undefined){ data[today].suly = 0; changed = true; }
+    if(data[today].rendeles === undefined){ data[today].rendeles = 0; changed = true; }
+
+    if(changed){
+        saveData();
+    }
 }
 
 ensureTodayData();
@@ -1312,8 +1337,8 @@ function deleteClosedPicking(id){
     const biztos = confirm(
         "Biztosan törlöd ezt a lezárást a statisztikából?\n\n" +
         (record.datum || "") + " " + (record.ido || "") + "\n" +
-        "Súly: " + fmt(record.suly) + " kg\n" +
-        "Tétel: " + fmt(record.tetel) + "\n\n" +
+        "Súly: " + showKg(record.suly) + "\n" +
+        "Tétel: " + showNumber(record.tetel) + "\n\n" +
         "Ez csak ezt az egy bejegyzést törli."
     );
 
