@@ -205,7 +205,7 @@ button{
 
 .menuTabs{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr;
+    grid-template-columns:1fr 1fr;
     gap:8px;
     margin-bottom:12px;
 }
@@ -324,6 +324,28 @@ button{
     user-select:none;
 }
 
+
+.settingNote{
+    font-size:13px;
+    opacity:.75;
+    line-height:1.35;
+    margin:8px 0 12px;
+}
+
+.settingBtn{
+    background:#374151;
+    color:white;
+    border:1px solid #4b5563;
+    padding:12px;
+    font-size:15px;
+}
+
+.settingBtn.active{
+    background:#14532d;
+    border-color:#22c55e;
+    color:white;
+}
+
 .deleteMiniBtn{
     background:#7f1d1d;
     color:white;
@@ -370,9 +392,6 @@ button{
 A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </div>
 
-<button class="grayBtn" onclick="toggleKartonMod()" id="pbtn">
-Karton mód
-</button>
 
 <div class="card">
     <div class="small">TÉTEL</div>
@@ -424,6 +443,10 @@ Karton mód
                 Átlagok
             </button>
 
+            <button class="menuTab" data-tab="beallitasok" onclick="showMenuTab('beallitasok')">
+                Beállítások
+            </button>
+
             <button class="menuTab" data-tab="changelog" onclick="showMenuTab('changelog')">
                 Changelog
             </button>
@@ -441,7 +464,7 @@ Karton mód
 </div>
 
 <script>
-let kartonMod = false;
+let kartonMod = localStorage.getItem("kartonMod") === "1";
 let hiddenMode = localStorage.getItem("hiddenMode") === "1";
 
 function getTodayKey(){
@@ -625,20 +648,31 @@ function toggleHiddenMode(){
     }
 }
 
-function toggleKartonMod(){
-    kartonMod = !kartonMod;
-
+function updateKartonModeUI(){
     const box = document.getElementById("kartonBox");
-    const btn = document.getElementById("pbtn");
+    const btn = document.getElementById("settingsKartonBtn");
+    const state = document.getElementById("settingsKartonState");
 
     if(box){
         box.style.display = kartonMod ? "block" : "none";
     }
 
     if(btn){
-        btn.innerText = kartonMod ? "Karton mód ✅" : "Karton mód";
+        btn.classList.toggle("active", kartonMod);
+        btn.innerText = kartonMod ? "Karton mód: BE" : "Karton mód: KI";
+    }
+
+    if(state){
+        state.innerText = kartonMod ? "Bekapcsolva" : "Kikapcsolva";
     }
 }
+
+function toggleKartonMod(){
+    kartonMod = !kartonMod;
+    localStorage.setItem("kartonMod", kartonMod ? "1" : "0");
+    updateKartonModeUI();
+}
+
 
 function togglePentek(){
     toggleKartonMod();
@@ -715,26 +749,21 @@ function render(){
     const banner = document.getElementById("weightBanner");
 
     if(banner){
-        if(hiddenMode){
-            banner.innerText = "Rejtett mód";
-            banner.style.background = "#374151";
+        // Rejtett módban csak a számot takarjuk el,
+        // a színjelzés marad, hogy lásd a 10 000 / 13 000 kg határt.
+        banner.innerText = hiddenMode ? "•••• kg" : fmt(d.suly) + " kg";
+
+        if(d.suly < 10000){
+            banner.style.background = "#dc2626";
+            banner.style.color = "#fff";
+        }
+        else if(d.suly < 13000){
+            banner.style.background = "#16a34a";
             banner.style.color = "#fff";
         }
         else{
-            banner.innerText = fmt(d.suly) + " kg";
-
-            if(d.suly < 10000){
-                banner.style.background = "#dc2626";
-                banner.style.color = "#fff";
-            }
-            else if(d.suly < 13000){
-                banner.style.background = "#16a34a";
-                banner.style.color = "#fff";
-            }
-            else{
-                banner.style.background = "#eab308";
-                banner.style.color = "#000";
-            }
+            banner.style.background = "#eab308";
+            banner.style.color = "#000";
         }
     }
 
@@ -788,14 +817,7 @@ function closePicking(){
     document.getElementById("k").value = "";
     document.getElementById("s").value = "";
 
-    kartonMod = false;
-
-    const box = document.getElementById("kartonBox");
-    const btn = document.getElementById("pbtn");
-
-    if(box) box.style.display = "none";
-    if(btn) btn.innerText = "Karton mód";
-
+    updateKartonModeUI();
     render();
 
     setTimeout(function(){
@@ -895,6 +917,11 @@ function showMenuTab(tab){
         box.innerHTML = renderAtlagok();
     }
 
+    if(tab === "beallitasok"){
+        box.innerHTML = renderBeallitasok();
+        updateKartonModeUI();
+    }
+
     if(tab === "changelog"){
         box.innerHTML = renderChangelog();
     }
@@ -902,7 +929,7 @@ function showMenuTab(tab){
     const dangerZone = document.getElementById("dangerZone");
 
     if(dangerZone){
-        dangerZone.style.display = tab === "changelog" ? "none" : "block";
+        dangerZone.style.display = tab === "beallitasok" ? "block" : "none";
     }
 }
 
@@ -1212,14 +1239,56 @@ function renderAtlagok(){
     `;
 }
 
+function renderBeallitasok(){
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">⚙️ Beállítások</div>
+            <div class="menuLine"><span>Karton mód</span><b id="settingsKartonState">${kartonMod ? "Bekapcsolva" : "Kikapcsolva"}</b></div>
+            <div class="settingNote">
+                Ha bekapcsolod, a főképernyőn megjelenik a Karton mező.
+                Kikapcsolva nem foglal helyet.
+            </div>
+            <button id="settingsKartonBtn" class="settingBtn ${kartonMod ? "active" : ""}" onclick="toggleKartonMod()">
+                ${kartonMod ? "Karton mód: BE" : "Karton mód: KI"}
+            </button>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🧪 Tesztelés / adatkezelés</div>
+            <div class="settingNote">
+                Teszt lezárást az Előzményekben külön is tudsz törölni.
+                A lenti gomb csak akkor kell, ha mindent teljesen nullázni akarsz.
+            </div>
+        </div>
+    `;
+}
+
 function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">📦 Szedőcsicska V2 - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.6</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.8</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.8 - Rejtett mód színjelzés javítás</div>
+            <div>- Rejtett módban a felső súlysáv színe már nem tűnik el</div>
+            <div>- Csak a kg szám van elrejtve</div>
+            <div>- A piros / zöld / sárga állapot továbbra is látható</div>
+            <div>- Így szám nélkül is látszik, ha eléred a 10 000 kg vagy 13 000 kg határt</div>
+        </div>
+
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.7 - Beállítások menüpont</div>
+            <div>- Karton mód gomb lekerült a főképernyőről</div>
+            <div>- Új Beállítások menüpont hozzáadva</div>
+            <div>- Karton mód innen kapcsolható ki és be</div>
+            <div>- A főképernyő tisztább és rövidebb lett</div>
+            <div>- Az összes adat törlése gomb is a Beállítások alatt jelenik meg</div>
+        </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">V1.6 - Rejtett mód finomítás és külön törlés</div>
@@ -1234,7 +1303,7 @@ function renderChangelog(){
             <div class="menuCardTitle">V1.5 - Rejtett mód</div>
             <div>- Rejtett mód ki/be kapcsoló hozzáadva</div>
             <div>- Rejtett módban a főképernyős számok nem láthatók</div>
-            <div>- A felső súlykijelző nem árulja el, hol jársz</div>
+            <div>- A felső súlykijelzőben a pontos szám rejtve marad</div>
             <div>- A főképernyős statisztikai számok rejtve jelennek meg</div>
             <div>- Menüben az érzékeny számok el vannak homályosítva</div>
             <div>- A beállítás megmarad újranyitás után is</div>
@@ -1421,10 +1490,7 @@ function deleteAllData(){
     document.getElementById("k").value = "";
     document.getElementById("s").value = "";
 
-    kartonMod = false;
-    document.getElementById("kartonBox").style.display = "none";
-    document.getElementById("pbtn").innerText = "Karton mód";
-
+    updateKartonModeUI();
     render();
 
     if(document.getElementById("menuOverlay").style.display === "block"){
@@ -1435,6 +1501,7 @@ function deleteAllData(){
 }
 
 updateHiddenModeUI();
+updateKartonModeUI();
 render();
 showDailyQuote();
 
