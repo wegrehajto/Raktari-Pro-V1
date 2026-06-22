@@ -510,6 +510,78 @@ button:active{
     margin-top:12px;
 }
 
+
+.scoreTotalBox{
+    background:linear-gradient(135deg, rgba(34,197,94,.14), rgba(14,165,233,.08));
+    border:1px solid rgba(34,197,94,.20);
+    border-radius:18px;
+    padding:14px;
+    margin-bottom:10px;
+}
+
+.scoreTotalLabel{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:800;
+    margin-bottom:4px;
+}
+
+.scoreTotalValue{
+    font-size:30px;
+    font-weight:950;
+    color:#bbf7d0;
+    letter-spacing:-.6px;
+}
+
+.scoreRule{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.10);
+    border-radius:14px;
+    padding:11px;
+    margin-top:8px;
+    font-size:14px;
+    color:#cbd5e1;
+    line-height:1.35;
+}
+
+.scoreRule b{
+    color:#fff;
+}
+
+.rankItem{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.10);
+    border-radius:14px;
+    padding:11px;
+    margin-top:8px;
+}
+
+.rankName{
+    font-weight:900;
+    color:#fff;
+}
+
+.rankMeta{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:3px;
+}
+
+.rankPoints{
+    font-weight:950;
+    color:#bbf7d0;
+    white-space:nowrap;
+}
+
+.privacyMode #menuContent[data-tab="ranglista"] .scoreSensitive{
+    filter:blur(7px);
+    user-select:none;
+}
+
 @media (max-width:380px){
     body{
         padding:12px;
@@ -606,6 +678,10 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
                 Átlagok
             </button>
 
+            <button class="menuTab" data-tab="ranglista" onclick="showMenuTab('ranglista')">
+                Ranglista
+            </button>
+
             <button class="menuTab" data-tab="beallitasok" onclick="showMenuTab('beallitasok')">
                 Beállítások
             </button>
@@ -669,7 +745,10 @@ function createEmptyDay(){
         suly:0,
         rendeles:0,
         hetszazas:0,
-        hetszazasSzeria:0
+        hetszazasSzeria:0,
+        hetszazasSzeriaMax:0,
+        hatarido6000:null,
+        hatarido6000Ido:""
     };
 }
 
@@ -688,6 +767,9 @@ function ensureTodayData(){
     if(data[today].rendeles === undefined){ data[today].rendeles = 0; changed = true; }
     if(data[today].hetszazas === undefined){ data[today].hetszazas = 0; changed = true; }
     if(data[today].hetszazasSzeria === undefined){ data[today].hetszazasSzeria = 0; changed = true; }
+    if(data[today].hetszazasSzeriaMax === undefined){ data[today].hetszazasSzeriaMax = Number(data[today].hetszazasSzeria || 0); changed = true; }
+    if(data[today].hatarido6000 === undefined){ data[today].hatarido6000 = null; changed = true; }
+    if(data[today].hatarido6000Ido === undefined){ data[today].hatarido6000Ido = ""; changed = true; }
 
     if(changed){
         saveData();
@@ -710,6 +792,8 @@ function fmt(n){
 
 const FIZETES_SZORZO = 1.64;
 const HETSZAZAS_LIMIT = 680;
+const HATARIDO_SULY = 6000;
+const HATARIDO_ORA = 11;
 
 function fmtDecimal(n){
     return Number(n || 0).toLocaleString("hu-HU", {
@@ -728,6 +812,116 @@ function showFt(n){
 
 function showRate(){
     return fmtDecimal(FIZETES_SZORZO) + " Ft / egység";
+}
+
+function showPont(n){
+    return hiddenMode ? "•••• pont" : fmt(n) + " pont";
+}
+
+function isBeforeOrAtDeadline(){
+    const now = new Date();
+    return now.getHours() < HATARIDO_ORA || (now.getHours() === HATARIDO_ORA && now.getMinutes() === 0);
+}
+
+function getTimeShort(){
+    const now = new Date();
+    return now.toLocaleTimeString("hu-HU", {
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+}
+
+function updateHatarido6000Status(){
+    const d = data[today];
+    if(!d) return;
+
+    if((d.hatarido6000 === null || d.hatarido6000 === undefined) && Number(d.suly || 0) >= HATARIDO_SULY){
+        d.hatarido6000 = isBeforeOrAtDeadline();
+        d.hatarido6000Ido = getTimeShort();
+    }
+}
+
+function getSulyPont(suly){
+    const s = Number(suly || 0);
+
+    if(s >= 15000) return 10;
+    if(s >= 13000) return 8;
+    if(s >= 10000) return 5;
+
+    return 0;
+}
+
+function getOsszegysegPont(osszegyseg){
+    const o = Number(osszegyseg || 0);
+
+    if(o < 15000) return 0;
+
+    return Math.floor((o - 15000) / 1000) + 1;
+}
+
+function getHataridoPontInfo(d, isCurrentDay){
+    const suly = Number(d.suly || 0);
+
+    if(d.hatarido6000 === true || d.hatarido6000 === "true"){
+        return {
+            pont:5,
+            label:"Megvolt 11:00-ig"
+        };
+    }
+
+    if(d.hatarido6000 === false || d.hatarido6000 === "false"){
+        return {
+            pont:3,
+            label:"Nem volt meg 11:00-ig"
+        };
+    }
+
+    if(isCurrentDay && isBeforeOrAtDeadline() && suly < HATARIDO_SULY){
+        return {
+            pont:0,
+            label:"Függőben 11:00-ig"
+        };
+    }
+
+    if(isCurrentDay && isBeforeOrAtDeadline() && suly >= HATARIDO_SULY){
+        return {
+            pont:5,
+            label:"Megvolt 11:00-ig"
+        };
+    }
+
+    return {
+        pont:3,
+        label:"Nem volt meg 11:00-ig"
+    };
+}
+
+function getPontBreakdown(d, isCurrentDay){
+    const tetel = Number(d.tetel || 0);
+    const suly = Number(d.suly || 0);
+    const osszegyseg = d.osszegyseg !== undefined
+        ? Number(d.osszegyseg || 0)
+        : getOsszegyseg(tetel, suly);
+    const hetszazas = Number(d.hetszazas || 0);
+    const maxSzeria = Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0);
+    const hatarido = getHataridoPontInfo(d, isCurrentDay);
+    const sulyPont = getSulyPont(suly);
+    const hetszazasPont = hetszazas;
+    const szeriaPont = maxSzeria >= 3 ? 3 : 0;
+    const osszegysegPont = getOsszegysegPont(osszegyseg);
+    const total = hatarido.pont + sulyPont + hetszazasPont + szeriaPont + osszegysegPont;
+
+    return {
+        total:total,
+        hataridoPont:hatarido.pont,
+        hataridoLabel:hatarido.label,
+        sulyPont:sulyPont,
+        hetszazasPont:hetszazasPont,
+        szeriaPont:szeriaPont,
+        osszegysegPont:osszegysegPont,
+        osszegyseg:osszegyseg,
+        maxSzeria:maxSzeria
+    };
 }
 
 function hiddenText(suffix){
@@ -912,6 +1106,7 @@ function add(){
     data[today].tetel += t;
     data[today].karton += kartonMod ? k : 0;
     data[today].suly += s;
+    updateHatarido6000Status();
 
     // 1 hozzáadás = 1 kiszedett rendelés / bolt
     data[today].rendeles += 1;
@@ -921,6 +1116,9 @@ function add(){
     if(s > HETSZAZAS_LIMIT){
         data[today].hetszazas += 1;
         data[today].hetszazasSzeria += 1;
+        if(Number(data[today].hetszazasSzeria || 0) > Number(data[today].hetszazasSzeriaMax || 0)){
+            data[today].hetszazasSzeriaMax = Number(data[today].hetszazasSzeria || 0);
+        }
     }
     else{
         data[today].hetszazasSzeria = 0;
@@ -1001,6 +1199,9 @@ function closePicking(){
         suly: Number(d.suly || 0),
         rendeles: Number(d.rendeles || 0),
         hetszazas: Number(d.hetszazas || 0),
+        hetszazasSzeriaMax: Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0),
+        hatarido6000: d.hatarido6000 === true,
+        hatarido6000Ido: d.hatarido6000Ido || "",
         becsultKarton: getBecsultKarton(d.tetel),
         osszegyseg: getOsszegyseg(d.tetel, d.suly)
     };
@@ -1118,6 +1319,10 @@ function showMenuTab(tab){
         box.innerHTML = renderAtlagok();
     }
 
+    if(tab === "ranglista"){
+        box.innerHTML = renderRanglista();
+    }
+
     if(tab === "beallitasok"){
         box.innerHTML = renderBeallitasok();
         updateKartonModeUI();
@@ -1159,6 +1364,9 @@ function getDayStats(){
                 suly:0,
                 rendeles:0,
                 hetszazas:0,
+                hetszazasSzeriaMax:0,
+                hatarido6000:false,
+                hatarido6000Ido:"",
                 becsultKarton:0,
                 osszegyseg:0,
                 lezartBlokk:0
@@ -1170,12 +1378,20 @@ function getDayStats(){
         const suly = Number(r.suly || 0);
         const rendeles = getRendelesCount(r);
         const hetszazas = Number(r.hetszazas || 0);
+        const maxSzeria = Number(r.hetszazasSzeriaMax || 0);
 
         map[datum].tetel += tetel;
         map[datum].karton += karton;
         map[datum].suly += suly;
         map[datum].rendeles += rendeles;
         map[datum].hetszazas += hetszazas;
+        if(maxSzeria > map[datum].hetszazasSzeriaMax){
+            map[datum].hetszazasSzeriaMax = maxSzeria;
+        }
+        if(r.hatarido6000 === true || r.hatarido6000 === "true"){
+            map[datum].hatarido6000 = true;
+            map[datum].hatarido6000Ido = r.hatarido6000Ido || map[datum].hatarido6000Ido;
+        }
         map[datum].becsultKarton += getBecsultKarton(tetel);
         map[datum].osszegyseg += getOsszegyseg(tetel, suly);
         map[datum].lezartBlokk++;
@@ -1323,6 +1539,185 @@ function getMonthStats(days){
     return Object.values(map).sort(function(a,b){
         return b.honap.localeCompare(a.honap);
     });
+}
+
+function buildCurrentPointDay(){
+    ensureTodayData();
+    const d = data[today] || createEmptyDay();
+
+    return {
+        datum:today,
+        tetel:Number(d.tetel || 0),
+        karton:Number(d.karton || 0),
+        suly:Number(d.suly || 0),
+        rendeles:Number(d.rendeles || 0),
+        hetszazas:Number(d.hetszazas || 0),
+        hetszazasSzeria:Number(d.hetszazasSzeria || 0),
+        hetszazasSzeriaMax:Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0),
+        hatarido6000:d.hatarido6000,
+        hatarido6000Ido:d.hatarido6000Ido || "",
+        becsultKarton:getBecsultKarton(d.tetel),
+        osszegyseg:getOsszegyseg(d.tetel, d.suly),
+        folyamatban:true
+    };
+}
+
+function hasAnyDayData(d){
+    return Number(d.tetel || 0) > 0 || Number(d.suly || 0) > 0 || Number(d.rendeles || 0) > 0;
+}
+
+function getPointDays(){
+    const list = [];
+    const closedDays = getDayStats();
+
+    closedDays.forEach(function(d){
+        const b = getPontBreakdown(d, false);
+        list.push({
+            datum:d.datum,
+            tetel:d.tetel,
+            suly:d.suly,
+            rendeles:d.rendeles,
+            hetszazas:d.hetszazas,
+            osszegyseg:d.osszegyseg,
+            pont:b.total,
+            folyamatban:false
+        });
+    });
+
+    const current = buildCurrentPointDay();
+
+    if(hasAnyDayData(current)){
+        const b = getPontBreakdown(current, true);
+        list.push({
+            datum:current.datum,
+            tetel:current.tetel,
+            suly:current.suly,
+            rendeles:current.rendeles,
+            hetszazas:current.hetszazas,
+            osszegyseg:current.osszegyseg,
+            pont:b.total,
+            folyamatban:true
+        });
+    }
+
+    return list;
+}
+
+function getPointMonthStats(pointDays){
+    const map = {};
+
+    pointDays.forEach(function(d){
+        const honap = String(d.datum || "Ismeretlen").slice(0,7);
+
+        if(!map[honap]){
+            map[honap] = {
+                honap:honap,
+                napok:0,
+                pont:0,
+                suly:0,
+                rendeles:0,
+                osszegyseg:0
+            };
+        }
+
+        map[honap].napok++;
+        map[honap].pont += Number(d.pont || 0);
+        map[honap].suly += Number(d.suly || 0);
+        map[honap].rendeles += Number(d.rendeles || 0);
+        map[honap].osszegyseg += Number(d.osszegyseg || 0);
+    });
+
+    return Object.values(map).sort(function(a,b){
+        return b.pont - a.pont || b.honap.localeCompare(a.honap);
+    });
+}
+
+function renderRanglista(){
+    const current = buildCurrentPointDay();
+    const currentBreak = getPontBreakdown(current, true);
+    const pointDays = getPointDays();
+    const pointMonths = getPointMonthStats(pointDays);
+    const currentMonthKey = today.slice(0,7);
+    const currentMonth = pointMonths.find(function(m){
+        return m.honap === currentMonthKey;
+    });
+
+    const dayRank = pointDays.slice().sort(function(a,b){
+        return b.pont - a.pont || b.datum.localeCompare(a.datum);
+    }).slice(0,14);
+
+    const monthRank = pointMonths.slice().sort(function(a,b){
+        return b.pont - a.pont || b.honap.localeCompare(a.honap);
+    }).slice(0,12);
+
+    const dayRankHtml = dayRank.length ? dayRank.map(function(d, index){
+        return `
+            <div class="rankItem">
+                <div>
+                    <div class="rankName">${index + 1}. ${d.datum}${d.folyamatban ? " · ma" : ""}</div>
+                    <div class="rankMeta">${fmt(d.suly)} kg · ${fmt(d.rendeles)} rendelés · ${fmt(d.hetszazas)} db 700-as</div>
+                </div>
+                <div class="rankPoints scoreSensitive">${showPont(d.pont)}</div>
+            </div>
+        `;
+    }).join("") : `<div class="empty">Még nincs ranglista adat.</div>`;
+
+    const monthRankHtml = monthRank.length ? monthRank.map(function(m, index){
+        return `
+            <div class="rankItem">
+                <div>
+                    <div class="rankName">${index + 1}. ${getMonthLabel(m.honap)}</div>
+                    <div class="rankMeta">${fmt(m.napok)} nap · ${fmt(m.suly)} kg · ${fmt(m.rendeles)} rendelés</div>
+                </div>
+                <div class="rankPoints scoreSensitive">${showPont(m.pont)}</div>
+            </div>
+        `;
+    }).join("") : `<div class="empty">Még nincs havi ranglista adat.</div>`;
+
+    return `
+        <div class="scoreTotalBox">
+            <div class="scoreTotalLabel">Mai pontszám</div>
+            <div class="scoreTotalValue scoreSensitive">${showPont(currentBreak.total)}</div>
+            <div class="small">Saját teszt pontozás. A közös online toplista később jöhet, ha ez beválik.</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🧮 Mai pontok bontása</div>
+            <div class="menuLine"><span>11:00-ig 6000 kg</span><b class="scoreSensitive">${showPont(currentBreak.hataridoPont)}</b></div>
+            <div class="small">${hiddenMode ? "Rejtve" : currentBreak.hataridoLabel}</div>
+            <div class="menuLine"><span>Napi súly cél</span><b class="scoreSensitive">${showPont(currentBreak.sulyPont)}</b></div>
+            <div class="menuLine"><span>700-as rendelések</span><b class="scoreSensitive">${showPont(currentBreak.hetszazasPont)}</b></div>
+            <div class="menuLine"><span>700-as széria bónusz</span><b class="scoreSensitive">${showPont(currentBreak.szeriaPont)}</b></div>
+            <div class="menuLine"><span>~Összegység pont</span><b class="scoreSensitive">${showPont(currentBreak.osszegysegPont)}</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📅 Aktuális hónap</div>
+            <div class="menuLine"><span>Havi pont eddig</span><b class="scoreSensitive">${showPont(currentMonth ? currentMonth.pont : 0)}</b></div>
+            <div class="menuLine"><span>Számolt napok</span><b>${fmt(currentMonth ? currentMonth.napok : 0)}</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🏆 Napi ranglista</div>
+            <div class="small">A napokat pont szerint rendezi. A mai, még le nem zárt nap is látszik, ha van benne adat.</div>
+            ${dayRankHtml}
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🗓️ Havi ranglista</div>
+            <div class="small">Hónaponként összesített pontszám.</div>
+            ${monthRankHtml}
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📘 Pontszabályok</div>
+            <div class="scoreRule"><b>11:00-ig 6000 kg:</b><br>ha megvan, +5 pont; ha nincs meg, +3 pont.</div>
+            <div class="scoreRule"><b>Napi súly cél:</b><br>10 000 kg felett +5 pont, 13 000 kg felett +8 pont, 15 000 kg felett +10 pont.</div>
+            <div class="scoreRule"><b>700-as rendelés:</b><br>minden 680 kg feletti rendelés +1 pont.</div>
+            <div class="scoreRule"><b>700-as széria:</b><br>ha legalább 3 db 700-as jön egymás után, +3 bónusz pont.</div>
+            <div class="scoreRule"><b>~Összegység:</b><br>15 000-től +1 pont, utána minden újabb 1000 ~összegység után megint +1 pont.</div>
+        </div>
+    `;
 }
 
 function renderAtlagok(){
@@ -1524,8 +1919,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.11</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.12</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.12 - Saját pontozás és ranglista</div>
+            <div>- Ranglista menüpont hozzáadva</div>
+            <div>- Mai pontszám és havi pontszám számítása</div>
+            <div>- 11:00-ig 6000 kg pontozás</div>
+            <div>- 700-as rendelések és 700-as széria pontozása</div>
+            <div>- ~Összegység pontozás: 15 000-től +1, utána minden +1000 újabb +1</div>
+            <div>- Pontszabályok magyarázata bekerült a Ranglista menübe</div>
         </div>
 
         <div class="menuCard">
