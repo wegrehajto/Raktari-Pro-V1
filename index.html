@@ -201,6 +201,15 @@ button:active{
     font-size:22px;
 }
 
+.hotRow{
+    color:#fed7aa;
+}
+
+.hotRow span{
+    color:#fb923c;
+    font-size:20px;
+}
+
 .creatorFooter{
     text-align:center;
     font-size:12px;
@@ -449,10 +458,13 @@ button:active{
     margin-bottom:10px;
 }
 
-.privacyMode #menuContent .menuLine b,
-.privacyMode #menuContent .historyTotal,
-.privacyMode #menuContent .historySummary .small,
-.privacyMode #menuContent .historyPick div{
+.privacyMode #menuContent[data-tab="elozmenyek"] .menuLine b,
+.privacyMode #menuContent[data-tab="elozmenyek"] .historyTotal,
+.privacyMode #menuContent[data-tab="elozmenyek"] .historySummary .small,
+.privacyMode #menuContent[data-tab="elozmenyek"] .historyPick div,
+.privacyMode #menuContent[data-tab="atlagok"] .menuLine b,
+.privacyMode #menuContent[data-tab="atlagok"] .historyTotal,
+.privacyMode #menuContent[data-tab="atlagok"] .historySummary .small{
     filter:blur(7px);
     user-select:none;
 }
@@ -562,8 +574,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 
 <div class="stat">
     <div class="row">Tétel <span id="st">0</span></div>
-    <div class="row">Karton <span id="sk">0</span></div>
-    <div class="row">Kiszedett rendelések <span id="sr">0</span></div>
+    <div class="row hotRow">700-as <span id="h700">0</span></div>
     <div class="row totalRow">~Összegység <span id="sum">0</span></div>
 </div>
 
@@ -656,7 +667,9 @@ function createEmptyDay(){
         tetel:0,
         karton:0,
         suly:0,
-        rendeles:0
+        rendeles:0,
+        hetszazas:0,
+        hetszazasSzeria:0
     };
 }
 
@@ -673,6 +686,8 @@ function ensureTodayData(){
     if(data[today].karton === undefined){ data[today].karton = 0; changed = true; }
     if(data[today].suly === undefined){ data[today].suly = 0; changed = true; }
     if(data[today].rendeles === undefined){ data[today].rendeles = 0; changed = true; }
+    if(data[today].hetszazas === undefined){ data[today].hetszazas = 0; changed = true; }
+    if(data[today].hetszazasSzeria === undefined){ data[today].hetszazasSzeria = 0; changed = true; }
 
     if(changed){
         saveData();
@@ -693,6 +708,27 @@ function fmt(n){
     return Number(n || 0).toLocaleString("hu-HU");
 }
 
+const FIZETES_SZORZO = 1.64;
+const HETSZAZAS_LIMIT = 680;
+
+function fmtDecimal(n){
+    return Number(n || 0).toLocaleString("hu-HU", {
+        minimumFractionDigits:2,
+        maximumFractionDigits:2
+    });
+}
+
+function getBecsultFizetes(osszegyseg){
+    return Math.round(Number(osszegyseg || 0) * FIZETES_SZORZO);
+}
+
+function showFt(n){
+    return hiddenMode ? "•••• Ft" : fmt(n) + " Ft";
+}
+
+function showRate(){
+    return fmtDecimal(FIZETES_SZORZO) + " Ft / egység";
+}
 
 function hiddenText(suffix){
     return "••••" + (suffix || "");
@@ -880,6 +916,16 @@ function add(){
     // 1 hozzáadás = 1 kiszedett rendelés / bolt
     data[today].rendeles += 1;
 
+    // 700-as: 680 kg feletti rendelés.
+    // Ha több ilyen jön egymás után, a felső súlysáv tűz ikonnal jelez.
+    if(s > HETSZAZAS_LIMIT){
+        data[today].hetszazas += 1;
+        data[today].hetszazasSzeria += 1;
+    }
+    else{
+        data[today].hetszazasSzeria = 0;
+    }
+
     saveData();
 
     tInput.value = "";
@@ -903,7 +949,8 @@ function render(){
     if(banner){
         // Rejtett módban csak a számot takarjuk el,
         // a színjelzés marad, hogy lásd a 10 000 / 13 000 kg határt.
-        banner.innerText = hiddenMode ? "•••• kg" : fmt(d.suly) + " kg";
+        const fireIcon = Number(d.hetszazasSzeria || 0) > 2 ? " 🔥" : "";
+        banner.innerText = (hiddenMode ? "•••• kg" : fmt(d.suly) + " kg") + fireIcon;
 
         if(d.suly < 10000){
             banner.style.background = "#dc2626";
@@ -920,13 +967,11 @@ function render(){
     }
 
     const stEl = document.getElementById("st");
-    const skEl = document.getElementById("sk");
-    const srEl = document.getElementById("sr");
+    const h700El = document.getElementById("h700");
     const sumEl = document.getElementById("sum");
 
     if(stEl) stEl.innerText = showNumber(d.tetel);
-    if(skEl) skEl.innerText = showNumber(d.karton);
-    if(srEl) srEl.innerText = showNumber(d.rendeles);
+    if(h700El) h700El.innerText = showNumber(d.hetszazas);
     if(sumEl) sumEl.innerText = showNumber(getOsszegyseg(d.tetel, d.suly));
 }
 
@@ -955,6 +1000,7 @@ function closePicking(){
         karton: Number(d.karton || 0),
         suly: Number(d.suly || 0),
         rendeles: Number(d.rendeles || 0),
+        hetszazas: Number(d.hetszazas || 0),
         becsultKarton: getBecsultKarton(d.tetel),
         osszegyseg: getOsszegyseg(d.tetel, d.suly)
     };
@@ -982,6 +1028,7 @@ function closePicking(){
         "Tétel: " + showNumber(record.tetel) + "\n" +
         "Karton: " + showNumber(record.karton) + "\n" +
         "Kiszedett rendelések: " + showNumber(record.rendeles) + "\n" +
+        "700-as: " + showNumber(record.hetszazas) + "\n" +
         "Becsült karton: " + showApprox(record.becsultKarton) + "\n" +
         "~Összegység: " + showNumber(record.osszegyseg)
     );
@@ -1061,6 +1108,8 @@ function showMenuTab(tab){
     const box = document.getElementById("menuContent");
     if(!box) return;
 
+    box.dataset.tab = tab;
+
     if(tab === "elozmenyek"){
         box.innerHTML = renderElozmenyek();
     }
@@ -1109,6 +1158,7 @@ function getDayStats(){
                 karton:0,
                 suly:0,
                 rendeles:0,
+                hetszazas:0,
                 becsultKarton:0,
                 osszegyseg:0,
                 lezartBlokk:0
@@ -1119,11 +1169,13 @@ function getDayStats(){
         const karton = Number(r.karton || 0);
         const suly = Number(r.suly || 0);
         const rendeles = getRendelesCount(r);
+        const hetszazas = Number(r.hetszazas || 0);
 
         map[datum].tetel += tetel;
         map[datum].karton += karton;
         map[datum].suly += suly;
         map[datum].rendeles += rendeles;
+        map[datum].hetszazas += hetszazas;
         map[datum].becsultKarton += getBecsultKarton(tetel);
         map[datum].osszegyseg += getOsszegyseg(tetel, suly);
         map[datum].lezartBlokk++;
@@ -1253,6 +1305,7 @@ function getMonthStats(days){
                 karton:0,
                 suly:0,
                 rendeles:0,
+                hetszazas:0,
                 becsultKarton:0,
                 osszegyseg:0
             };
@@ -1273,10 +1326,26 @@ function getMonthStats(days){
 }
 
 function renderAtlagok(){
+    ensureTodayData();
+
+    const d = data[today] || createEmptyDay();
+    const maiOsszegyseg = getOsszegyseg(d.tetel, d.suly);
+    const maiFizetes = getBecsultFizetes(maiOsszegyseg);
+
     const days = getDayStats();
 
     if(days.length === 0 || closedPickings.length === 0){
-        return `<div class="empty">Még nincs elég adat az átlagokhoz.</div>`;
+        return `
+            <div class="menuCard moneyCard">
+                <div class="menuCardTitle">💰 Várható becsült fizetés</div>
+                <div class="menuLine moneyLine"><span>Mai eddigi várható</span><b>${showFt(maiFizetes)}</b></div>
+                <div class="menuLine"><span>Mai ~összegység</span><b>${showNumber(maiOsszegyseg)}</b></div>
+                <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
+                <div class="moneyHint">A számítás becslés: ~összegység × 1,64 Ft.</div>
+            </div>
+
+            <div class="empty">Még nincs lezárt adat az átlagokhoz.</div>
+        `;
     }
 
     const totalSuly = days.reduce(function(sum,d){ return sum + d.suly; }, 0);
@@ -1292,7 +1361,17 @@ function renderAtlagok(){
     const avgDayOsszegyseg = Math.round(totalOsszegyseg / days.length);
     const avgDayBecsultKarton = Math.round(totalBecsultKarton / days.length);
 
+    const totalFizetes = getBecsultFizetes(totalOsszegyseg);
+    const avgDayFizetes = Math.round(totalFizetes / days.length);
+
     const months = getMonthStats(days);
+    const currentMonthKey = today.slice(0,7);
+    const currentMonthData = months.find(function(m){
+        return m.honap === currentMonthKey;
+    });
+    const currentMonthClosedOsszegyseg = currentMonthData ? Number(currentMonthData.osszegyseg || 0) : 0;
+    const currentMonthWithTodayOsszegyseg = currentMonthClosedOsszegyseg + maiOsszegyseg;
+    const currentMonthWithTodayFizetes = getBecsultFizetes(currentMonthWithTodayOsszegyseg);
 
     const bestDay = days.reduce(function(best,d){
         return d.suly > best.suly ? d : best;
@@ -1302,12 +1381,18 @@ function renderAtlagok(){
         return d.suly < worst.suly ? d : worst;
     }, days[0]);
 
+    const bestFizetesDay = days.reduce(function(best,d){
+        return d.osszegyseg > best.osszegyseg ? d : best;
+    }, days[0]);
+
     const monthlyHtml = months.map(function(m){
         const avgSuly = Math.round(m.suly / m.napok);
         const avgTetel = Math.round(m.tetel / m.napok);
         const avgRendeles = Math.round(m.rendeles / m.napok);
         const avgBecsultKarton = Math.round(m.becsultKarton / m.napok);
         const avgOsszegyseg = Math.round(m.osszegyseg / m.napok);
+        const haviFizetes = getBecsultFizetes(m.osszegyseg);
+        const avgFizetes = Math.round(haviFizetes / m.napok);
 
         return `
             <details class="menuCard">
@@ -1333,6 +1418,7 @@ function renderAtlagok(){
                     <div class="menuLine"><span>Karton</span><b>${fmt(m.karton)}</b></div>
                     <div class="menuLine"><span>Becsült karton</span><b>~${fmt(m.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(m.osszegyseg)}</b></div>
+                    <div class="menuLine moneyLine"><span>Várható becsült fizetés</span><b>${showFt(haviFizetes)}</b></div>
 
                     <div class="menuCardTitle" style="margin-top:14px;">Napi átlag ebben a hónapban</div>
                     <div class="menuLine"><span>Átlag súly / nap</span><b>${fmt(avgSuly)} kg</b></div>
@@ -1340,12 +1426,23 @@ function renderAtlagok(){
                     <div class="menuLine"><span>Átlag rendelés / nap</span><b>${fmt(avgRendeles)}</b></div>
                     <div class="menuLine"><span>Átlag becsült karton / nap</span><b>~${fmt(avgBecsultKarton)}</b></div>
                     <div class="menuLine"><span>Átlag ~összegység / nap</span><b>${fmt(avgOsszegyseg)}</b></div>
+                    <div class="menuLine moneyLine"><span>Átlag várható fizetés / nap</span><b>${showFt(avgFizetes)}</b></div>
                 </div>
             </details>
         `;
     }).join("");
 
     return `
+        <div class="menuCard moneyCard">
+            <div class="menuCardTitle">💰 Várható becsült fizetés</div>
+            <div class="menuLine moneyLine"><span>Mai eddigi várható</span><b>${showFt(maiFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Aktuális havi várható</span><b>${showFt(currentMonthWithTodayFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Összes lezárt várható</span><b>${showFt(totalFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Napi átlag várható</span><b>${showFt(avgDayFizetes)}</b></div>
+            <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
+            <div class="moneyHint">Becslés: ~összegység × 1,64 Ft. Az aktuális havi érték a lezárt napokat és a mai még le nem zárt adatot is beleszámolja.</div>
+        </div>
+
         <div class="menuCard">
             <div class="menuCardTitle">📊 Összesített adatok</div>
             <div class="menuLine"><span>Lezárt napok</span><b>${fmt(days.length)}</b></div>
@@ -1364,11 +1461,12 @@ function renderAtlagok(){
             <div class="menuLine"><span>Napi átlag rendelés</span><b>${fmt(avgDayRendeles)}</b></div>
             <div class="menuLine"><span>Napi átlag becsült karton</span><b>~${fmt(avgDayBecsultKarton)}</b></div>
             <div class="menuLine"><span>Napi átlag ~összegység</span><b>${fmt(avgDayOsszegyseg)}</b></div>
+            <div class="menuLine moneyLine"><span>Napi átlag várható fizetés</span><b>${showFt(avgDayFizetes)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">🗓️ Havi lebontás</div>
-            <div class="small">Hónaponként látod az összesített adatokat és az adott hónap napi átlagait.</div>
+            <div class="small">Hónaponként látod az összesített adatokat, az adott hónap napi átlagait és a várható becsült fizetést.</div>
         </div>
 
         ${monthlyHtml}
@@ -1379,6 +1477,13 @@ function renderAtlagok(){
             <div class="menuLine"><span>Súly alapján</span><b class="good">${fmt(bestDay.suly)} kg</b></div>
             <div class="menuLine"><span>Kiszedett rendelés</span><b>${fmt(bestDay.rendeles)}</b></div>
             <div class="menuLine"><span>~Összegység</span><b>${fmt(bestDay.osszegyseg)}</b></div>
+        </div>
+
+        <div class="menuCard moneyCard">
+            <div class="menuCardTitle">💸 Legjobb fizus nap</div>
+            <div class="menuLine"><span>Dátum</span><b class="good">${bestFizetesDay.datum}</b></div>
+            <div class="menuLine"><span>~Összegység</span><b>${fmt(bestFizetesDay.osszegyseg)}</b></div>
+            <div class="menuLine moneyLine"><span>Várható becsült fizetés</span><b>${showFt(getBecsultFizetes(bestFizetesDay.osszegyseg))}</b></div>
         </div>
 
         <div class="menuCard">
@@ -1419,8 +1524,30 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.9</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.11</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.11 - Főképernyő tisztítás és 700-as jelzés</div>
+            <div>- Főképernyőről kikerült a Karton stat sor</div>
+            <div>- Főképernyőről kikerült a Kiszedett rendelések stat sor</div>
+            <div>- Főképernyőn megjelent a 700-as számláló</div>
+            <div>- 700-as = 680 kg feletti rendelés</div>
+            <div>- 3 egymás utáni 700-as után tűz ikon jelenik meg a felső súlysávban</div>
+            <div>- Adatmentési kulcsok nem változtak, a régi adatok megmaradnak</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.10 - Várható becsült fizetés</div>
+            <div>- Új becsült fizetés kártya az Átlagok menüpontban</div>
+            <div>- Képlet: ~összegység × 1,64 Ft</div>
+            <div>- Látszik a mai eddigi várható fizetés</div>
+            <div>- Látszik az aktuális havi várható fizetés</div>
+            <div>- Látszik az összes lezárt nap várható fizetése</div>
+            <div>- Havi lebontásban is megjelenik a várható becsült fizetés</div>
+            <div>- Rejtett módban a fizetés összege is el van rejtve</div>
+            <div>- A mentési kulcsok nem változtak, a régi adatok megmaradnak</div>
         </div>
 
         <div class="menuCard">
