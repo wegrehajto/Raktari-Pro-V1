@@ -582,6 +582,46 @@ button:active{
     user-select:none;
 }
 
+
+.settingInput{
+    width:100%;
+    box-sizing:border-box;
+    margin:8px 0 10px;
+    border:1px solid rgba(148,163,184,.18);
+    border-radius:14px;
+    padding:12px;
+    font-size:17px;
+    background:#0f172a;
+    color:var(--text);
+    font-weight:800;
+    outline:none;
+}
+
+.vacationTag{
+    display:inline-block;
+    background:rgba(234,179,8,.12);
+    color:#fde68a;
+    border:1px solid rgba(234,179,8,.25);
+    border-radius:999px;
+    padding:4px 9px;
+    font-size:12px;
+    font-weight:900;
+    margin-bottom:8px;
+}
+
+.vacationCard{
+    border-color:rgba(234,179,8,.22);
+}
+
+.vacationMini{
+    background:#0f172a;
+    border:1px solid rgba(234,179,8,.18);
+    border-radius:14px;
+    padding:11px;
+    margin-top:8px;
+}
+
+
 @media (max-width:380px){
     body{
         padding:12px;
@@ -729,6 +769,7 @@ function loadJson(key, fallback){
 
 let data = loadJson("data", {});
 let closedPickings = loadJson("closedPickings", []);
+let vacationDays = loadJson("vacationDays", []);
 
 if(!data || typeof data !== "object" || Array.isArray(data)){
     data = {};
@@ -736,6 +777,10 @@ if(!data || typeof data !== "object" || Array.isArray(data)){
 
 if(!Array.isArray(closedPickings)){
     closedPickings = [];
+}
+
+if(!Array.isArray(vacationDays)){
+    vacationDays = [];
 }
 
 function createEmptyDay(){
@@ -784,6 +829,10 @@ function saveData(){
 
 function saveClosed(){
     localStorage.setItem("closedPickings", JSON.stringify(closedPickings));
+}
+
+function saveVacationDays(){
+    localStorage.setItem("vacationDays", JSON.stringify(vacationDays));
 }
 
 function fmt(n){
@@ -1404,12 +1453,13 @@ function getDayStats(){
 
 function renderElozmenyek(){
     const days = getDayStats();
+    const vacations = getVacationStats(days);
 
-    if(days.length === 0){
+    if(days.length === 0 && vacations.length === 0){
         return `<div class="empty">Még nincs lezárt adat.</div>`;
     }
 
-    return days.map(function(d){
+    const workHtml = days.map(function(d){
         const picks = closedPickings
             .filter(function(r){
                 return (r.datum || "Ismeretlen") === d.datum;
@@ -1478,6 +1528,28 @@ function renderElozmenyek(){
             </details>
         `;
     }).join("");
+
+    const vacationHtml = vacations.length ? `
+        <div class="menuCard vacationCard">
+            <div class="menuCardTitle">🌴 Szabadság napok</div>
+            <div class="small">Nem számítanak bele a súlyba, tételbe, pontba vagy 700-as statba. Csak a becsült fizetéshez adódnak hozzá havi napi átlaggal.</div>
+        </div>
+        ${vacations.map(function(v){
+            return `
+                <div class="menuCard vacationCard">
+                    <div class="vacationTag">🌴 Szabadság</div>
+                    <div class="menuCardTitle">${v.datum}</div>
+                    <div class="menuLine moneyLine"><span>Számolt napi átlag</span><b>${showFt(v.napiAtlagFizetes)}</b></div>
+                    <div class="small">Az adott hónap lezárt munkanapjainak napi átlagából számolva. Ha abban a hónapban még nincs adat, az összes eddigi lezárt munkanap átlaga alapján.</div>
+                    <button class="deleteMiniBtn" onclick="deleteVacationDay(${Number(v.id || 0)})">
+                        🗑️ Szabadság nap törlése
+                    </button>
+                </div>
+            `;
+        }).join("")}
+    ` : "";
+
+    return workHtml + vacationHtml;
 }
 
 function getMonthLabel(monthKey){
@@ -1505,6 +1577,175 @@ function getMonthLabel(monthKey){
     }
 
     return year + " " + names[month - 1];
+}
+
+
+function getVacationDays(){
+    return vacationDays
+        .filter(function(v){
+            return v && v.datum;
+        })
+        .map(function(v){
+            return {
+                id:Number(v.id || 0),
+                datum:String(v.datum || ""),
+                createdAt:v.createdAt || ""
+            };
+        })
+        .sort(function(a,b){
+            return b.datum.localeCompare(a.datum);
+        });
+}
+
+function hasClosedDataForDate(datum){
+    return closedPickings.some(function(r){
+        return (r.datum || "") === datum;
+    });
+}
+
+function hasActiveDataForDate(datum){
+    if(datum !== getTodayKey()) return false;
+
+    ensureTodayData();
+    const d = data[today] || createEmptyDay();
+
+    return Number(d.tetel || 0) > 0 || Number(d.suly || 0) > 0 || Number(d.rendeles || 0) > 0 || Number(d.karton || 0) > 0;
+}
+
+function getWorkdayAveragePayForMonth(datum, days){
+    const monthKey = String(datum || "").slice(0,7);
+    const monthDays = days.filter(function(d){
+        return String(d.datum || "").slice(0,7) === monthKey;
+    });
+
+    if(monthDays.length > 0){
+        const monthTotal = monthDays.reduce(function(sum,d){
+            return sum + getBecsultFizetes(d.osszegyseg);
+        }, 0);
+
+        return Math.round(monthTotal / monthDays.length);
+    }
+
+    if(days.length > 0){
+        const total = days.reduce(function(sum,d){
+            return sum + getBecsultFizetes(d.osszegyseg);
+        }, 0);
+
+        return Math.round(total / days.length);
+    }
+
+    return 0;
+}
+
+function getVacationStats(days){
+    return getVacationDays().map(function(v){
+        const napiAtlagFizetes = getWorkdayAveragePayForMonth(v.datum, days);
+
+        return {
+            id:v.id,
+            datum:v.datum,
+            honap:String(v.datum || "").slice(0,7),
+            napiAtlagFizetes:napiAtlagFizetes
+        };
+    });
+}
+
+function getVacationMonthStats(vacations){
+    const map = {};
+
+    vacations.forEach(function(v){
+        const honap = v.honap || String(v.datum || "").slice(0,7);
+
+        if(!map[honap]){
+            map[honap] = {
+                honap:honap,
+                napok:0,
+                fizetes:0
+            };
+        }
+
+        map[honap].napok++;
+        map[honap].fizetes += Number(v.napiAtlagFizetes || 0);
+    });
+
+    return Object.values(map).sort(function(a,b){
+        return b.honap.localeCompare(a.honap);
+    });
+}
+
+function getVacationPayForMonth(vacationMonthStats, monthKey){
+    const m = vacationMonthStats.find(function(x){
+        return x.honap === monthKey;
+    });
+
+    return m ? Number(m.fizetes || 0) : 0;
+}
+
+function getVacationDaysForMonth(vacationMonthStats, monthKey){
+    const m = vacationMonthStats.find(function(x){
+        return x.honap === monthKey;
+    });
+
+    return m ? Number(m.napok || 0) : 0;
+}
+
+function addVacationDay(){
+    const input = document.getElementById("vacationDate");
+    const datum = input && input.value ? input.value : getTodayKey();
+
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(datum)){
+        alert("Válassz ki egy érvényes dátumot.");
+        return;
+    }
+
+    if(getVacationDays().some(function(v){ return v.datum === datum; })){
+        alert("Ez a nap már szabadságként rögzítve van.");
+        return;
+    }
+
+    if(hasClosedDataForDate(datum)){
+        alert("Erre a napra már van lezárt szedés. Előbb töröld azt az Előzményekből, ha szabadságként akarod rögzíteni.");
+        return;
+    }
+
+    if(hasActiveDataForDate(datum)){
+        alert("Erre a napra van aktív, le nem zárt adat. Előbb zárd le vagy töröld, utána rögzíts szabadságot.");
+        return;
+    }
+
+    if(!confirm("Biztosan szabadságként rögzíted ezt a napot?\n\n" + datum)) return;
+
+    vacationDays.push({
+        id:Date.now(),
+        datum:datum,
+        createdAt:new Date().toISOString()
+    });
+
+    saveVacationDays();
+    refreshActiveMenu();
+    alert("Szabadság nap rögzítve.");
+}
+
+function deleteVacationDay(id){
+    const numericId = Number(id || 0);
+    const item = getVacationDays().find(function(v){
+        return Number(v.id || 0) === numericId;
+    });
+
+    if(!item){
+        alert("Nem találom ezt a szabadság napot.");
+        return;
+    }
+
+    if(!confirm("Biztosan törlöd ezt a szabadság napot?\n\n" + item.datum)) return;
+
+    vacationDays = vacationDays.filter(function(v){
+        return Number(v.id || 0) !== numericId;
+    });
+
+    saveVacationDays();
+    refreshActiveMenu();
+    alert("Szabadság nap törölve.");
 }
 
 function getMonthStats(days){
@@ -1728,8 +1969,22 @@ function renderAtlagok(){
     const maiFizetes = getBecsultFizetes(maiOsszegyseg);
 
     const days = getDayStats();
+    const vacationStats = getVacationStats(days);
+    const vacationMonthStats = getVacationMonthStats(vacationStats);
+    const totalVacationFizetes = vacationStats.reduce(function(sum,v){
+        return sum + Number(v.napiAtlagFizetes || 0);
+    }, 0);
 
     if(days.length === 0 || closedPickings.length === 0){
+        const vacationEmptyHtml = vacationStats.length ? `
+            <div class="menuCard vacationCard">
+                <div class="menuCardTitle">🌴 Szabadságok</div>
+                <div class="menuLine"><span>Rögzített szabadság napok</span><b>${fmt(vacationStats.length)}</b></div>
+                <div class="menuLine moneyLine"><span>Szabadság becsült összeg</span><b>${showFt(totalVacationFizetes)}</b></div>
+                <div class="small">Még nincs lezárt munkanap, ezért a szabadság napi átlaga jelenleg 0 Ft. Zárj le legalább egy munkanapot, és újraszámolja.</div>
+            </div>
+        ` : "";
+
         return `
             <div class="menuCard moneyCard">
                 <div class="menuCardTitle">💰 Várható becsült fizetés</div>
@@ -1738,6 +1993,8 @@ function renderAtlagok(){
                 <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
                 <div class="moneyHint">A számítás becslés: ~összegység × 1,64 Ft.</div>
             </div>
+
+            ${vacationEmptyHtml}
 
             <div class="empty">Még nincs lezárt adat az átlagokhoz.</div>
         `;
@@ -1757,6 +2014,7 @@ function renderAtlagok(){
     const avgDayBecsultKarton = Math.round(totalBecsultKarton / days.length);
 
     const totalFizetes = getBecsultFizetes(totalOsszegyseg);
+    const totalFizetesWithVacation = totalFizetes + totalVacationFizetes;
     const avgDayFizetes = Math.round(totalFizetes / days.length);
 
     const months = getMonthStats(days);
@@ -1765,8 +2023,10 @@ function renderAtlagok(){
         return m.honap === currentMonthKey;
     });
     const currentMonthClosedOsszegyseg = currentMonthData ? Number(currentMonthData.osszegyseg || 0) : 0;
+    const currentMonthVacationFizetes = getVacationPayForMonth(vacationMonthStats, currentMonthKey);
     const currentMonthWithTodayOsszegyseg = currentMonthClosedOsszegyseg + maiOsszegyseg;
-    const currentMonthWithTodayFizetes = getBecsultFizetes(currentMonthWithTodayOsszegyseg);
+    const currentMonthWorkWithTodayFizetes = getBecsultFizetes(currentMonthWithTodayOsszegyseg);
+    const currentMonthWithTodayFizetes = currentMonthWorkWithTodayFizetes + currentMonthVacationFizetes;
 
     const bestDay = days.reduce(function(best,d){
         return d.suly > best.suly ? d : best;
@@ -1780,14 +2040,37 @@ function renderAtlagok(){
         return d.osszegyseg > best.osszegyseg ? d : best;
     }, days[0]);
 
-    const monthlyHtml = months.map(function(m){
-        const avgSuly = Math.round(m.suly / m.napok);
-        const avgTetel = Math.round(m.tetel / m.napok);
-        const avgRendeles = Math.round(m.rendeles / m.napok);
-        const avgBecsultKarton = Math.round(m.becsultKarton / m.napok);
-        const avgOsszegyseg = Math.round(m.osszegyseg / m.napok);
+    const monthKeys = Array.from(new Set(
+        months.map(function(m){ return m.honap; }).concat(
+            vacationMonthStats.map(function(m){ return m.honap; })
+        )
+    )).sort(function(a,b){
+        return b.localeCompare(a);
+    });
+
+    const monthlyHtml = monthKeys.map(function(monthKey){
+        const m = months.find(function(x){ return x.honap === monthKey; }) || {
+            honap:monthKey,
+            napok:0,
+            tetel:0,
+            karton:0,
+            suly:0,
+            rendeles:0,
+            becsultKarton:0,
+            osszegyseg:0
+        };
+
+        const vacationDaysInMonth = getVacationDaysForMonth(vacationMonthStats, monthKey);
+        const vacationPayInMonth = getVacationPayForMonth(vacationMonthStats, monthKey);
         const haviFizetes = getBecsultFizetes(m.osszegyseg);
-        const avgFizetes = Math.round(haviFizetes / m.napok);
+        const haviOsszesFizetes = haviFizetes + vacationPayInMonth;
+
+        const avgSuly = m.napok ? Math.round(m.suly / m.napok) : 0;
+        const avgTetel = m.napok ? Math.round(m.tetel / m.napok) : 0;
+        const avgRendeles = m.napok ? Math.round(m.rendeles / m.napok) : 0;
+        const avgBecsultKarton = m.napok ? Math.round(m.becsultKarton / m.napok) : 0;
+        const avgOsszegyseg = m.napok ? Math.round(m.osszegyseg / m.napok) : 0;
+        const avgFizetes = m.napok ? Math.round(haviFizetes / m.napok) : 0;
 
         return `
             <details class="menuCard">
@@ -1795,52 +2078,66 @@ function renderAtlagok(){
                     <div>
                         <div class="menuCardTitle">📅 ${getMonthLabel(m.honap)}</div>
                         <div class="small">
-                            ${fmt(m.napok)} nap · ${fmt(m.suly)} kg · ${fmt(m.rendeles)} rendelés
+                            ${fmt(m.napok)} munkanap · ${fmt(vacationDaysInMonth)} szabadság · ${fmt(m.suly)} kg
                         </div>
                     </div>
 
                     <div class="historyTotal">
-                        ${fmt(avgSuly)} kg/nap
+                        ${showFt(haviOsszesFizetes)}
                     </div>
                 </summary>
 
                 <div class="historyDetails">
                     <div class="menuCardTitle">Havi összesen</div>
-                    <div class="menuLine"><span>Lezárt napok</span><b>${fmt(m.napok)}</b></div>
+                    <div class="menuLine"><span>Lezárt munkanapok</span><b>${fmt(m.napok)}</b></div>
+                    <div class="menuLine"><span>Szabadság napok</span><b>${fmt(vacationDaysInMonth)}</b></div>
                     <div class="menuLine"><span>Kiszedett rendelések</span><b>${fmt(m.rendeles)}</b></div>
                     <div class="menuLine"><span>Súly</span><b>${fmt(m.suly)} kg</b></div>
                     <div class="menuLine"><span>Tétel</span><b>${fmt(m.tetel)}</b></div>
                     <div class="menuLine"><span>Karton</span><b>${fmt(m.karton)}</b></div>
                     <div class="menuLine"><span>Becsült karton</span><b>~${fmt(m.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(m.osszegyseg)}</b></div>
-                    <div class="menuLine moneyLine"><span>Várható becsült fizetés</span><b>${showFt(haviFizetes)}</b></div>
+                    <div class="menuLine moneyLine"><span>Munkából várható</span><b>${showFt(haviFizetes)}</b></div>
+                    <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(vacationPayInMonth)}</b></div>
+                    <div class="menuLine moneyLine"><span>Havi összes várható</span><b>${showFt(haviOsszesFizetes)}</b></div>
 
                     <div class="menuCardTitle" style="margin-top:14px;">Napi átlag ebben a hónapban</div>
-                    <div class="menuLine"><span>Átlag súly / nap</span><b>${fmt(avgSuly)} kg</b></div>
-                    <div class="menuLine"><span>Átlag tétel / nap</span><b>${fmt(avgTetel)}</b></div>
-                    <div class="menuLine"><span>Átlag rendelés / nap</span><b>${fmt(avgRendeles)}</b></div>
-                    <div class="menuLine"><span>Átlag becsült karton / nap</span><b>~${fmt(avgBecsultKarton)}</b></div>
-                    <div class="menuLine"><span>Átlag ~összegység / nap</span><b>${fmt(avgOsszegyseg)}</b></div>
-                    <div class="menuLine moneyLine"><span>Átlag várható fizetés / nap</span><b>${showFt(avgFizetes)}</b></div>
+                    <div class="menuLine"><span>Átlag súly / munkanap</span><b>${fmt(avgSuly)} kg</b></div>
+                    <div class="menuLine"><span>Átlag tétel / munkanap</span><b>${fmt(avgTetel)}</b></div>
+                    <div class="menuLine"><span>Átlag rendelés / munkanap</span><b>${fmt(avgRendeles)}</b></div>
+                    <div class="menuLine"><span>Átlag becsült karton / munkanap</span><b>~${fmt(avgBecsultKarton)}</b></div>
+                    <div class="menuLine"><span>Átlag ~összegység / munkanap</span><b>${fmt(avgOsszegyseg)}</b></div>
+                    <div class="menuLine moneyLine"><span>Átlag várható fizetés / munkanap</span><b>${showFt(avgFizetes)}</b></div>
                 </div>
             </details>
         `;
     }).join("");
+
+    const vacationSummaryHtml = `
+        <div class="menuCard vacationCard">
+            <div class="menuCardTitle">🌴 Szabadságok</div>
+            <div class="menuLine"><span>Rögzített szabadság napok</span><b>${fmt(vacationStats.length)}</b></div>
+            <div class="menuLine moneyLine"><span>Szabadság becsült összeg</span><b>${showFt(totalVacationFizetes)}</b></div>
+            <div class="small">A szabadság nem számít bele a súlyba, tételbe, 700-asba vagy pontozásba. A fizetéshez az adott hónap lezárt munkanapjainak napi átlaga alapján adódik hozzá.</div>
+        </div>
+    `;
 
     return `
         <div class="menuCard moneyCard">
             <div class="menuCardTitle">💰 Várható becsült fizetés</div>
             <div class="menuLine moneyLine"><span>Mai eddigi várható</span><b>${showFt(maiFizetes)}</b></div>
             <div class="menuLine moneyLine"><span>Aktuális havi várható</span><b>${showFt(currentMonthWithTodayFizetes)}</b></div>
-            <div class="menuLine moneyLine"><span>Összes lezárt várható</span><b>${showFt(totalFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Munkából lezárt várható</span><b>${showFt(totalFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Szabadság becsült összesen</span><b>${showFt(totalVacationFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Összes várható</span><b>${showFt(totalFizetesWithVacation)}</b></div>
             <div class="menuLine moneyLine"><span>Napi átlag várható</span><b>${showFt(avgDayFizetes)}</b></div>
             <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
-            <div class="moneyHint">Becslés: ~összegység × 1,64 Ft. Az aktuális havi érték a lezárt napokat és a mai még le nem zárt adatot is beleszámolja.</div>
+            <div class="moneyHint">Becslés: ~összegység × 1,64 Ft. Az aktuális havi érték a lezárt napokat, a mai még le nem zárt adatot és a rögzített szabadságokat is beleszámolja.</div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">📊 Összesített adatok</div>
-            <div class="menuLine"><span>Lezárt napok</span><b>${fmt(days.length)}</b></div>
+            <div class="menuLine"><span>Lezárt munkanapok</span><b>${fmt(days.length)}</b></div>
             <div class="menuLine"><span>Kiszedett rendelések összesen</span><b>${fmt(totalRendeles)}</b></div>
             <div class="menuLine"><span>Össz súly</span><b>${fmt(totalSuly)} kg</b></div>
             <div class="menuLine"><span>Össz tétel</span><b>${fmt(totalTetel)}</b></div>
@@ -1859,9 +2156,11 @@ function renderAtlagok(){
             <div class="menuLine moneyLine"><span>Napi átlag várható fizetés</span><b>${showFt(avgDayFizetes)}</b></div>
         </div>
 
+        ${vacationSummaryHtml}
+
         <div class="menuCard">
             <div class="menuCardTitle">🗓️ Havi lebontás</div>
-            <div class="small">Hónaponként látod az összesített adatokat, az adott hónap napi átlagait és a várható becsült fizetést.</div>
+            <div class="small">Hónaponként látod az összesített munkanapokat, a szabadság napokat, az adott hónap napi átlagait és a várható becsült fizetést.</div>
         </div>
 
         ${monthlyHtml}
@@ -1892,6 +2191,19 @@ function renderAtlagok(){
 }
 
 function renderBeallitasok(){
+    const vacationList = getVacationDays();
+    const vacationListHtml = vacationList.length ? vacationList.map(function(v){
+        return `
+            <div class="vacationMini">
+                <div><b>${v.datum}</b></div>
+                <div class="small">Szabadság nap</div>
+                <button class="deleteMiniBtn" onclick="deleteVacationDay(${Number(v.id || 0)})">
+                    🗑️ Törlés
+                </button>
+            </div>
+        `;
+    }).join("") : `<div class="empty">Még nincs rögzített szabadság.</div>`;
+
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚙️ Beállítások</div>
@@ -1903,6 +2215,23 @@ function renderBeallitasok(){
             <button id="settingsKartonBtn" class="settingBtn ${kartonMod ? "active" : ""}" onclick="toggleKartonMod()">
                 ${kartonMod ? "Karton mód: BE" : "Karton mód: KI"}
             </button>
+        </div>
+
+        <div class="menuCard vacationCard">
+            <div class="menuCardTitle">🌴 Szabadság nap rögzítése</div>
+            <div class="settingNote">
+                A szabadság nem számít bele a súlyba, tételbe, 700-asba vagy pontozásba.
+                A várható fizetéshez az adott hónap lezárt munkanapjainak napi átlaga alapján adódik hozzá.
+            </div>
+            <input id="vacationDate" class="settingInput" type="date" value="${getTodayKey()}">
+            <button class="settingBtn" onclick="addVacationDay()">
+                🌴 Szabadság nap hozzáadása
+            </button>
+        </div>
+
+        <div class="menuCard vacationCard">
+            <div class="menuCardTitle">🌴 Rögzített szabadságok</div>
+            ${vacationListHtml}
         </div>
 
         <div class="menuCard">
@@ -1919,8 +2248,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.12</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.13</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.13 - Szabadság napok</div>
+            <div>- Beállításokban szabadság nap rögzíthető</div>
+            <div>- Szabadság nem számít bele a súlyba, tételbe, 700-asba vagy pontozásba</div>
+            <div>- Szabadság a várható becsült fizetéshez adódik hozzá</div>
+            <div>- Számítás alapja az adott hónap lezárt munkanapjainak napi átlaga</div>
+            <div>- Előzményekben és Átlagokban külön megjelenik</div>
+            <div>- Külön törölhető szabadság nap</div>
         </div>
 
         <div class="menuCard">
@@ -2155,7 +2494,8 @@ function deleteAllData(){
         "- a lezárt szedéseket\n" +
         "- a napi adatokat\n" +
         "- az átlagokat\n" +
-        "- a tesztadatokat\n\n" +
+        "- a tesztadatokat\n" +
+        "- a szabadság napokat\n\n" +
         "Ezt nem lehet visszavonni."
     );
 
@@ -2172,9 +2512,11 @@ function deleteAllData(){
 
     localStorage.removeItem("data");
     localStorage.removeItem("closedPickings");
+    localStorage.removeItem("vacationDays");
 
     data = {};
     closedPickings = [];
+    vacationDays = [];
 
     today = getTodayKey();
     data[today] = createEmptyDay();
