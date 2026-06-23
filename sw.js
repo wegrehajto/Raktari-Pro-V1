@@ -1,4 +1,4 @@
-const CACHE_NAME = "szedocsicska-v8";
+const CACHE_NAME = "szedocsicska-v20";
 
 self.addEventListener("install", function(event){
     self.skipWaiting();
