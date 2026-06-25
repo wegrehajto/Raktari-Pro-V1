@@ -2170,6 +2170,21 @@ function renderBeallitasok(){
         </div>
 
         <div class="menuCard">
+            <div class="menuCardTitle">💾 Biztonsági mentés</div>
+            <div class="settingNote">
+                Frissítés, újratelepítés vagy telefoncsere előtt mentsd ki az adatokat fájlba.
+                A visszatöltés felülírja a telefonon lévő jelenlegi adatokat.
+            </div>
+            <button class="settingBtn active" onclick="downloadBackup()">
+                💾 Adatok mentése fájlba
+            </button>
+            <button class="settingBtn" style="margin-top:8px;" onclick="openBackupImport()">
+                📂 Adatok visszatöltése fájlból
+            </button>
+            <input id="backupFileInput" type="file" accept="application/json,.json" style="display:none" onchange="importBackupFromFile(this)">
+        </div>
+
+        <div class="menuCard">
             <div class="menuCardTitle">🧪 Tesztelés / adatkezelés</div>
             <div class="settingNote">
                 Teszt lezárást az Előzményekben külön is tudsz törölni.
@@ -2183,8 +2198,17 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.16</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.18</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.18 - Biztonsági mentés és visszatöltés</div>
+            <div>- Beállításokba bekerült az Adatok mentése fájlba gomb</div>
+            <div>- Beállításokba bekerült az Adatok visszatöltése fájlból gomb</div>
+            <div>- A mentés tartalmazza a napi adatokat, lezárt szedéseket, szabadságokat és beállításokat</div>
+            <div>- App törlés / újratelepítés / telefoncsere előtt így kimenthető a statisztika</div>
+            <div>- Visszatöltés előtt megerősítést kér, mert felülírja az aktuális helyi adatokat</div>
         </div>
 
         <div class="menuCard">
@@ -2360,9 +2384,157 @@ function renderChangelog(){
             <div>- Szebb dark UI</div>
             <div>- Menü görgetés további finomítása</div>
             <div>- Hibás bevitelek javítása / törlése</div>
-            <div>- Export lehetőség később</div>
+            <div>- Biztonsági mentés / visszatöltés elkészült</div>
         </div>
     `;
+}
+
+
+function getBackupPayload(){
+    ensureTodayData();
+
+    return {
+        app:"Súlyvadász",
+        backupVersion:"1.18",
+        exportedAt:new Date().toISOString(),
+        exportedAtLocal:new Date().toLocaleString("hu-HU"),
+        data:data,
+        closedPickings:closedPickings,
+        vacationDays:vacationDays,
+        settings:{
+            hiddenMode:hiddenMode,
+            kartonMod:kartonMod,
+            quoteDate:localStorage.getItem("quoteDate") || "",
+            quoteText:localStorage.getItem("quoteText") || ""
+        }
+    };
+}
+
+function downloadBackup(){
+    try{
+        const payload = getBackupPayload();
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], {type:"application/json"});
+        const fileName = "sulyvadasz-backup-" + getTodayKey() + ".json";
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+
+        setTimeout(function(){
+            URL.revokeObjectURL(url);
+            a.remove();
+        }, 500);
+    }
+    catch(e){
+        alert("Nem sikerült elkészíteni a biztonsági mentést.");
+    }
+}
+
+function openBackupImport(){
+    const input = document.getElementById("backupFileInput");
+
+    if(!input){
+        alert("Nem találom a visszatöltő mezőt. Nyisd meg újra a Beállítások menüt.");
+        return;
+    }
+
+    input.value = "";
+    input.click();
+}
+
+function importBackupFromFile(input){
+    const file = input && input.files ? input.files[0] : null;
+
+    if(!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event){
+        try{
+            const backup = JSON.parse(event.target.result);
+            const restoredData = backup.data || (backup.keys ? backup.keys.data : null);
+            const restoredClosed = backup.closedPickings || (backup.keys ? backup.keys.closedPickings : null);
+            const restoredVacation = backup.vacationDays || (backup.keys ? backup.keys.vacationDays : []);
+            const restoredSettings = backup.settings || {};
+
+            if(!restoredData || typeof restoredData !== "object" || Array.isArray(restoredData)){
+                throw new Error("Hiányzik vagy hibás a napi adat.");
+            }
+
+            if(!Array.isArray(restoredClosed)){
+                throw new Error("Hiányzik vagy hibás a lezárt szedések listája.");
+            }
+
+            if(restoredVacation && !Array.isArray(restoredVacation)){
+                throw new Error("Hibás a szabadság napok listája.");
+            }
+
+            const biztos = confirm(
+                "Biztosan visszatöltöd ezt a biztonsági mentést?\n\n" +
+                "Ez felülírja a telefonon lévő jelenlegi Súlyvadász adatokat.\n\n" +
+                "Mentés ideje: " + (backup.exportedAtLocal || backup.exportedAt || "ismeretlen")
+            );
+
+            if(!biztos){
+                input.value = "";
+                return;
+            }
+
+            data = restoredData;
+            closedPickings = restoredClosed;
+            vacationDays = restoredVacation || [];
+            hiddenMode = !!restoredSettings.hiddenMode;
+            kartonMod = !!restoredSettings.kartonMod;
+
+            today = getTodayKey();
+            ensureTodayData();
+
+            saveData();
+            saveClosed();
+            saveVacation();
+
+            localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
+            localStorage.setItem("kartonMod", kartonMod ? "1" : "0");
+
+            if(restoredSettings.quoteDate){
+                localStorage.setItem("quoteDate", restoredSettings.quoteDate);
+            }
+            else{
+                localStorage.removeItem("quoteDate");
+            }
+
+            if(restoredSettings.quoteText){
+                localStorage.setItem("quoteText", restoredSettings.quoteText);
+            }
+            else{
+                localStorage.removeItem("quoteText");
+            }
+
+            updateHiddenModeUI();
+            updateKartonModeUI();
+            render();
+            showDailyQuote();
+            refreshActiveMenu();
+
+            input.value = "";
+            alert("Biztonsági mentés visszatöltve.");
+        }
+        catch(e){
+            input.value = "";
+            alert("Nem sikerült visszatölteni a fájlt. Ellenőrizd, hogy Súlyvadász backup .json fájlt választottál-e.");
+        }
+    };
+
+    reader.onerror = function(){
+        input.value = "";
+        alert("Nem sikerült beolvasni a fájlt.");
+    };
+
+    reader.readAsText(file);
 }
 
 function refreshActiveMenu(){
