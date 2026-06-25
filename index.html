@@ -1555,7 +1555,7 @@ function renderElozmenyek(){
     const vacationHtml = vacations.length ? `
         <div class="menuCard vacationCard">
             <div class="menuCardTitle">🌴 Szabadság napok</div>
-            <div class="small">Nem számítanak bele a súlyba, tételbe, pontba vagy 700-as statba. Csak a becsült fizetéshez adódnak hozzá havi napi átlaggal.</div>
+            <div class="small">Nem számítanak bele a súlyba, tételbe vagy 700-as statba. Csak a becsült fizetéshez adódnak hozzá havi napi átlaggal.</div>
         </div>
         ${vacations.map(function(v){
             return `
@@ -2188,9 +2188,9 @@ function renderChangelog(){
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">V1.16 - Ranglista eltávolítva</div>
-            <div>- Ranglista menüpont kikerült az appból</div>
-            <div>- A pontozós / online toplistás irány elengedve</div>
+            <div class="menuCardTitle">V1.16 - Statisztikai tisztítás</div>
+            <div>- Menü egyszerűsítve helyi statisztikai használatra</div>
+            <div>- Megmaradt: Előzmények, Átlagok, Beállítások, Changelog</div>
             <div>- Maradnak a helyi statisztikák, előzmények, átlagok, fizetés és szabadság kezelés</div>
             <div>- Adatmentési kulcsok nem változtak, a régi adatok megmaradnak</div>
         </div>
