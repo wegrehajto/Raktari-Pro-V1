@@ -793,7 +793,11 @@ function createEmptyDay(){
         hetszazasSzeria:0,
         hetszazasSzeriaMax:0,
         hatarido6000:null,
-        hatarido6000Ido:""
+        hatarido6000Ido:"",
+        // A fő számításban használt kartonérték.
+        // Karton mód KI: becsült karton, Karton mód BE: beírt karton.
+        szamoltKarton:0,
+        osszegyseg:0
     };
 }
 
@@ -815,6 +819,18 @@ function ensureTodayData(){
     if(data[today].hetszazasSzeriaMax === undefined){ data[today].hetszazasSzeriaMax = Number(data[today].hetszazasSzeria || 0); changed = true; }
     if(data[today].hatarido6000 === undefined){ data[today].hatarido6000 = null; changed = true; }
     if(data[today].hatarido6000Ido === undefined){ data[today].hatarido6000Ido = ""; changed = true; }
+    if(data[today].szamoltKarton === undefined){
+        // Régi, még V1.14 előtti aktív napi adatnál nincs külön mentett számolt karton.
+        // Ha volt kézzel beírt karton, azt vesszük alapnak, különben marad a becslés.
+        data[today].szamoltKarton = Number(data[today].karton || 0) > 0
+            ? Number(data[today].karton || 0)
+            : getBecsultKarton(data[today].tetel);
+        changed = true;
+    }
+    if(data[today].osszegyseg === undefined){
+        data[today].osszegyseg = Number(data[today].suly || 0) + Number(data[today].tetel || 0) + Number(data[today].szamoltKarton || 0);
+        changed = true;
+    }
 
     if(changed){
         saveData();
@@ -890,22 +906,21 @@ function updateHatarido6000Status(){
     }
 }
 
-function getSulyPont(suly){
-    const s = Number(suly || 0);
+function getTetelPont(tetel){
+    const t = Number(tetel || 0);
+    const szazasBlokkok = Math.floor(t / 100);
 
-    if(s >= 15000) return 10;
-    if(s >= 13000) return 8;
-    if(s >= 10000) return 5;
+    if(szazasBlokkok <= 0) return 0;
 
-    return 0;
-}
+    // 1000 tételig minden megkezdett? Nem: csak lezárt 100-as blokk számít.
+    // 100-999 között minden 100 tétel +5 pont.
+    // 1000 tételnél 10 db 100-as blokk = 50 pont.
+    // 1000 felett minden további 100 tétel +10 pont.
+    if(szazasBlokkok <= 10){
+        return szazasBlokkok * 5;
+    }
 
-function getOsszegysegPont(osszegyseg){
-    const o = Number(osszegyseg || 0);
-
-    if(o < 15000) return 0;
-
-    return Math.floor((o - 15000) / 1000) + 1;
+    return (10 * 5) + ((szazasBlokkok - 10) * 10);
 }
 
 function getHataridoPontInfo(d, isCurrentDay){
@@ -954,20 +969,18 @@ function getPontBreakdown(d, isCurrentDay){
     const hetszazas = Number(d.hetszazas || 0);
     const maxSzeria = Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0);
     const hatarido = getHataridoPontInfo(d, isCurrentDay);
-    const sulyPont = getSulyPont(suly);
+    const tetelPont = getTetelPont(tetel);
     const hetszazasPont = hetszazas;
     const szeriaPont = maxSzeria >= 3 ? 3 : 0;
-    const osszegysegPont = getOsszegysegPont(osszegyseg);
-    const total = hatarido.pont + sulyPont + hetszazasPont + szeriaPont + osszegysegPont;
+    const total = hatarido.pont + tetelPont + hetszazasPont + szeriaPont;
 
     return {
         total:total,
         hataridoPont:hatarido.pont,
         hataridoLabel:hatarido.label,
-        sulyPont:sulyPont,
+        tetelPont:tetelPont,
         hetszazasPont:hetszazasPont,
         szeriaPont:szeriaPont,
-        osszegysegPont:osszegysegPont,
         osszegyseg:osszegyseg,
         maxSzeria:maxSzeria
     };
@@ -994,12 +1007,67 @@ function getBecsultKarton(tetel){
     return Math.round(Number(tetel || 0) * 2);
 }
 
-function getOsszegyseg(tetel, suly){
+function getSzamoltKarton(tetel, karton, beirtKartonnal){
+    // Karton mód BE: a beírt karton számít.
+    // Karton mód KI: marad az eddigi becslés, tétel × 2.
+    if(beirtKartonnal){
+        return Number(karton || 0);
+    }
+
+    return getBecsultKarton(tetel);
+}
+
+function getOsszegyseg(tetel, suly, karton, beirtKartonnal){
     const t = Number(tetel || 0);
     const s = Number(suly || 0);
-    const becsultKarton = getBecsultKarton(t);
+    const szamoltKarton = getSzamoltKarton(t, karton, beirtKartonnal === true);
 
-    return s + t + becsultKarton;
+    return s + t + szamoltKarton;
+}
+
+function getDaySzamoltKarton(d){
+    if(d && d.szamoltKarton !== undefined){
+        return Number(d.szamoltKarton || 0);
+    }
+
+    if(d && Number(d.karton || 0) > 0){
+        return Number(d.karton || 0);
+    }
+
+    return getBecsultKarton(d ? d.tetel : 0);
+}
+
+function getDayOsszegyseg(d){
+    if(d && d.osszegyseg !== undefined){
+        return Number(d.osszegyseg || 0);
+    }
+
+    return Number((d && d.suly) || 0) + Number((d && d.tetel) || 0) + getDaySzamoltKarton(d);
+}
+
+function getRecordSzamoltKarton(r){
+    if(r && r.szamoltKarton !== undefined){
+        return Number(r.szamoltKarton || 0);
+    }
+
+    // A régebbi rekordokban ez a mező még becsültKartonnak hívódott.
+    if(r && r.becsultKarton !== undefined){
+        return Number(r.becsultKarton || 0);
+    }
+
+    if(r && (r.kartonSzamitas === "beirt" || r.kartonMod === true)){
+        return Number(r.karton || 0);
+    }
+
+    return getBecsultKarton(r ? r.tetel : 0);
+}
+
+function getRecordOsszegyseg(r){
+    if(r && r.osszegyseg !== undefined){
+        return Number(r.osszegyseg || 0);
+    }
+
+    return Number((r && r.suly) || 0) + Number((r && r.tetel) || 0) + getRecordSzamoltKarton(r);
 }
 
 // régi név kompatibilitás miatt
@@ -1152,9 +1220,14 @@ function add(){
         }
     }
 
+    const szamoltKarton = getSzamoltKarton(t, k, kartonMod);
+    const hozzaadottOsszegyseg = s + t + szamoltKarton;
+
     data[today].tetel += t;
     data[today].karton += kartonMod ? k : 0;
     data[today].suly += s;
+    data[today].szamoltKarton += szamoltKarton;
+    data[today].osszegyseg += hozzaadottOsszegyseg;
     updateHatarido6000Status();
 
     // 1 hozzáadás = 1 kiszedett rendelés / bolt
@@ -1199,17 +1272,41 @@ function render(){
         const fireIcon = Number(d.hetszazasSzeria || 0) > 2 ? " 🔥" : "";
         banner.innerText = (hiddenMode ? "•••• kg" : fmt(d.suly) + " kg") + fireIcon;
 
+        banner.style.textShadow = "none";
+        banner.style.boxShadow = "0 12px 28px rgba(0,0,0,.35)";
+
         if(d.suly < 10000){
-            banner.style.background = "#dc2626";
+            // 10 tonna alatt: alap piros jelzés
+            banner.style.background = "linear-gradient(135deg, #991b1b, #ef4444)";
             banner.style.color = "#fff";
         }
         else if(d.suly < 13000){
-            banner.style.background = "#16a34a";
-            banner.style.color = "#fff";
+            // 10 000 kg: bronz
+            banner.style.background = "linear-gradient(135deg, #7c2d12, #b45309, #d97706)";
+            banner.style.color = "#fff7ed";
+            banner.style.textShadow = "0 1px 2px rgba(0,0,0,.45)";
+        }
+        else if(d.suly < 15000){
+            // 13 000 kg: ezüst
+            banner.style.background = "linear-gradient(135deg, #64748b, #cbd5e1, #94a3b8)";
+            banner.style.color = "#0f172a";
+        }
+        else if(d.suly < 18000){
+            // 15 000 kg: arany
+            banner.style.background = "linear-gradient(135deg, #a16207, #facc15, #f59e0b)";
+            banner.style.color = "#111827";
+        }
+        else if(d.suly < 20000){
+            // 18 000 kg: platina
+            banner.style.background = "linear-gradient(135deg, #334155, #e5e7eb, #94a3b8)";
+            banner.style.color = "#0f172a";
+            banner.style.boxShadow = "0 12px 30px rgba(226,232,240,.22), 0 12px 28px rgba(0,0,0,.35)";
         }
         else{
-            banner.style.background = "#eab308";
-            banner.style.color = "#000";
+            // 20 000 kg: gyémánt
+            banner.style.background = "linear-gradient(135deg, #0891b2, #67e8f9, #2563eb, #a5f3fc)";
+            banner.style.color = "#082f49";
+            banner.style.boxShadow = "0 12px 34px rgba(103,232,249,.35), 0 12px 28px rgba(0,0,0,.35)";
         }
     }
 
@@ -1219,7 +1316,7 @@ function render(){
 
     if(stEl) stEl.innerText = showNumber(d.tetel);
     if(h700El) h700El.innerText = showNumber(d.hetszazas);
-    if(sumEl) sumEl.innerText = showNumber(getOsszegyseg(d.tetel, d.suly));
+    if(sumEl) sumEl.innerText = showNumber(getDayOsszegyseg(d));
 }
 
 function closePicking(){
@@ -1251,8 +1348,11 @@ function closePicking(){
         hetszazasSzeriaMax: Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0),
         hatarido6000: d.hatarido6000 === true,
         hatarido6000Ido: d.hatarido6000Ido || "",
-        becsultKarton: getBecsultKarton(d.tetel),
-        osszegyseg: getOsszegyseg(d.tetel, d.suly)
+        kartonSzamitas: Number(d.karton || 0) > 0 ? "beirt_vagy_vegyes" : "becsult",
+        szamoltKarton: getDaySzamoltKarton(d),
+        // Kompatibilitás miatt a régi mezőnév is marad, de ez már az egységben használt kartonértéket jelenti.
+        becsultKarton: getDaySzamoltKarton(d),
+        osszegyseg: getDayOsszegyseg(d)
     };
 
     closedPickings.push(record);
@@ -1279,7 +1379,7 @@ function closePicking(){
         "Karton: " + showNumber(record.karton) + "\n" +
         "Kiszedett rendelések: " + showNumber(record.rendeles) + "\n" +
         "700-as: " + showNumber(record.hetszazas) + "\n" +
-        "Becsült karton: " + showApprox(record.becsultKarton) + "\n" +
+        "Karton az egységben: " + showApprox(record.szamoltKarton) + "\n" +
         "~Összegység: " + showNumber(record.osszegyseg)
     );
 }
@@ -1441,8 +1541,8 @@ function getDayStats(){
             map[datum].hatarido6000 = true;
             map[datum].hatarido6000Ido = r.hatarido6000Ido || map[datum].hatarido6000Ido;
         }
-        map[datum].becsultKarton += getBecsultKarton(tetel);
-        map[datum].osszegyseg += getOsszegyseg(tetel, suly);
+        map[datum].becsultKarton += getRecordSzamoltKarton(r);
+        map[datum].osszegyseg += getRecordOsszegyseg(r);
         map[datum].lezartBlokk++;
     });
 
@@ -1488,7 +1588,7 @@ function renderElozmenyek(){
                     <div class="menuLine"><span>Tétel</span><b>${fmt(d.tetel)}</b></div>
                     <div class="menuLine"><span>Karton</span><b>${fmt(d.karton)}</b></div>
                     <div class="menuLine"><span>Kiszedett rendelések száma</span><b>${fmt(d.rendeles)}</b></div>
-                    <div class="menuLine"><span>Becsült karton</span><b>~${fmt(d.becsultKarton)}</b></div>
+                    <div class="menuLine"><span>Karton az egységben</span><b>~${fmt(d.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(d.osszegyseg)}</b></div>
 
                     <button class="deleteDayBtn" onclick="deleteDayData('${d.datum}')">
@@ -1505,8 +1605,8 @@ function renderElozmenyek(){
                             const karton = Number(r.karton || 0);
                             const suly = Number(r.suly || 0);
                             const rendeles = getRendelesCount(r);
-                            const becsultKarton = getBecsultKarton(tetel);
-                            const osszegyseg = getOsszegyseg(tetel, suly);
+                            const becsultKarton = getRecordSzamoltKarton(r);
+                            const osszegyseg = getRecordOsszegyseg(r);
 
                             return `
                                 <div class="historyPick">
@@ -1515,7 +1615,7 @@ function renderElozmenyek(){
                                     <div>Tétel: ${fmt(tetel)}</div>
                                     <div>Karton: ${fmt(karton)}</div>
                                     <div>Kiszedett rendelések: ${fmt(rendeles)}</div>
-                                    <div>Becsült karton: ~${fmt(becsultKarton)}</div>
+                                    <div>Karton az egységben: ~${fmt(becsultKarton)}</div>
                                     <div>~Összegység: <b>${fmt(osszegyseg)}</b></div>
                                     <button class="deleteMiniBtn" onclick="deleteClosedPicking(${Number(r.id || 0)})">
                                         🗑️ Ezt a lezárást törlöm
@@ -1797,8 +1897,8 @@ function buildCurrentPointDay(){
         hetszazasSzeriaMax:Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0),
         hatarido6000:d.hatarido6000,
         hatarido6000Ido:d.hatarido6000Ido || "",
-        becsultKarton:getBecsultKarton(d.tetel),
-        osszegyseg:getOsszegyseg(d.tetel, d.suly),
+        becsultKarton:getDaySzamoltKarton(d),
+        osszegyseg:getDayOsszegyseg(d),
         folyamatban:true
     };
 }
@@ -1855,6 +1955,7 @@ function getPointMonthStats(pointDays){
                 honap:honap,
                 napok:0,
                 pont:0,
+                tetel:0,
                 suly:0,
                 rendeles:0,
                 osszegyseg:0
@@ -1863,6 +1964,7 @@ function getPointMonthStats(pointDays){
 
         map[honap].napok++;
         map[honap].pont += Number(d.pont || 0);
+        map[honap].tetel += Number(d.tetel || 0);
         map[honap].suly += Number(d.suly || 0);
         map[honap].rendeles += Number(d.rendeles || 0);
         map[honap].osszegyseg += Number(d.osszegyseg || 0);
@@ -1896,7 +1998,7 @@ function renderRanglista(){
             <div class="rankItem">
                 <div>
                     <div class="rankName">${index + 1}. ${d.datum}${d.folyamatban ? " · ma" : ""}</div>
-                    <div class="rankMeta">${fmt(d.suly)} kg · ${fmt(d.rendeles)} rendelés · ${fmt(d.hetszazas)} db 700-as</div>
+                    <div class="rankMeta">${fmt(d.tetel)} tétel · ${fmt(d.suly)} kg · ${fmt(d.hetszazas)} db 700-as</div>
                 </div>
                 <div class="rankPoints scoreSensitive">${showPont(d.pont)}</div>
             </div>
@@ -1908,7 +2010,7 @@ function renderRanglista(){
             <div class="rankItem">
                 <div>
                     <div class="rankName">${index + 1}. ${getMonthLabel(m.honap)}</div>
-                    <div class="rankMeta">${fmt(m.napok)} nap · ${fmt(m.suly)} kg · ${fmt(m.rendeles)} rendelés</div>
+                    <div class="rankMeta">${fmt(m.napok)} nap · ${fmt(m.tetel)} tétel · ${fmt(m.suly)} kg</div>
                 </div>
                 <div class="rankPoints scoreSensitive">${showPont(m.pont)}</div>
             </div>
@@ -1926,21 +2028,21 @@ function renderRanglista(){
             <div class="menuCardTitle">🧮 Mai pontok bontása</div>
             <div class="menuLine"><span>11:00-ig 6000 kg</span><b class="scoreSensitive">${showPont(currentBreak.hataridoPont)}</b></div>
             <div class="small">${hiddenMode ? "Rejtve" : currentBreak.hataridoLabel}</div>
-            <div class="menuLine"><span>Napi súly cél</span><b class="scoreSensitive">${showPont(currentBreak.sulyPont)}</b></div>
+            <div class="menuLine"><span>Tétel pont</span><b class="scoreSensitive">${showPont(currentBreak.tetelPont)}</b></div>
             <div class="menuLine"><span>700-as rendelések</span><b class="scoreSensitive">${showPont(currentBreak.hetszazasPont)}</b></div>
             <div class="menuLine"><span>700-as széria bónusz</span><b class="scoreSensitive">${showPont(currentBreak.szeriaPont)}</b></div>
-            <div class="menuLine"><span>~Összegység pont</span><b class="scoreSensitive">${showPont(currentBreak.osszegysegPont)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">📅 Aktuális hónap</div>
             <div class="menuLine"><span>Havi pont eddig</span><b class="scoreSensitive">${showPont(currentMonth ? currentMonth.pont : 0)}</b></div>
+            <div class="menuLine"><span>Havi tétel eddig</span><b>${fmt(currentMonth ? currentMonth.tetel : 0)}</b></div>
             <div class="menuLine"><span>Számolt napok</span><b>${fmt(currentMonth ? currentMonth.napok : 0)}</b></div>
         </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">🏆 Napi ranglista</div>
-            <div class="small">A napokat pont szerint rendezi. A mai, még le nem zárt nap is látszik, ha van benne adat.</div>
+            <div class="small">Tétel alapú pontozás szerint rendezi. A mai, még le nem zárt nap is látszik, ha van benne adat.</div>
             ${dayRankHtml}
         </div>
 
@@ -1953,10 +2055,9 @@ function renderRanglista(){
         <div class="menuCard">
             <div class="menuCardTitle">📘 Pontszabályok</div>
             <div class="scoreRule"><b>11:00-ig 6000 kg:</b><br>ha megvan, +5 pont; ha nincs meg, +3 pont.</div>
-            <div class="scoreRule"><b>Napi súly cél:</b><br>10 000 kg felett +5 pont, 13 000 kg felett +8 pont, 15 000 kg felett +10 pont.</div>
+            <div class="scoreRule"><b>Tétel pont:</b><br>1000 tételig minden lezárt 100 tétel +5 pont. 1000 tétel felett minden további 100 tétel +10 pont.</div>
             <div class="scoreRule"><b>700-as rendelés:</b><br>minden 680 kg feletti rendelés +1 pont.</div>
             <div class="scoreRule"><b>700-as széria:</b><br>ha legalább 3 db 700-as jön egymás után, +3 bónusz pont.</div>
-            <div class="scoreRule"><b>~Összegység:</b><br>15 000-től +1 pont, utána minden újabb 1000 ~összegység után megint +1 pont.</div>
         </div>
     `;
 }
@@ -1965,7 +2066,7 @@ function renderAtlagok(){
     ensureTodayData();
 
     const d = data[today] || createEmptyDay();
-    const maiOsszegyseg = getOsszegyseg(d.tetel, d.suly);
+    const maiOsszegyseg = getDayOsszegyseg(d);
     const maiFizetes = getBecsultFizetes(maiOsszegyseg);
 
     const days = getDayStats();
@@ -2095,7 +2196,7 @@ function renderAtlagok(){
                     <div class="menuLine"><span>Súly</span><b>${fmt(m.suly)} kg</b></div>
                     <div class="menuLine"><span>Tétel</span><b>${fmt(m.tetel)}</b></div>
                     <div class="menuLine"><span>Karton</span><b>${fmt(m.karton)}</b></div>
-                    <div class="menuLine"><span>Becsült karton</span><b>~${fmt(m.becsultKarton)}</b></div>
+                    <div class="menuLine"><span>Karton az egységben</span><b>~${fmt(m.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(m.osszegyseg)}</b></div>
                     <div class="menuLine moneyLine"><span>Munkából várható</span><b>${showFt(haviFizetes)}</b></div>
                     <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(vacationPayInMonth)}</b></div>
@@ -2105,7 +2206,7 @@ function renderAtlagok(){
                     <div class="menuLine"><span>Átlag súly / munkanap</span><b>${fmt(avgSuly)} kg</b></div>
                     <div class="menuLine"><span>Átlag tétel / munkanap</span><b>${fmt(avgTetel)}</b></div>
                     <div class="menuLine"><span>Átlag rendelés / munkanap</span><b>${fmt(avgRendeles)}</b></div>
-                    <div class="menuLine"><span>Átlag becsült karton / munkanap</span><b>~${fmt(avgBecsultKarton)}</b></div>
+                    <div class="menuLine"><span>Átlag karton az egységben / munkanap</span><b>~${fmt(avgBecsultKarton)}</b></div>
                     <div class="menuLine"><span>Átlag ~összegység / munkanap</span><b>${fmt(avgOsszegyseg)}</b></div>
                     <div class="menuLine moneyLine"><span>Átlag várható fizetés / munkanap</span><b>${showFt(avgFizetes)}</b></div>
                 </div>
@@ -2142,7 +2243,7 @@ function renderAtlagok(){
             <div class="menuLine"><span>Össz súly</span><b>${fmt(totalSuly)} kg</b></div>
             <div class="menuLine"><span>Össz tétel</span><b>${fmt(totalTetel)}</b></div>
             <div class="menuLine"><span>Össz karton</span><b>${fmt(totalKarton)}</b></div>
-            <div class="menuLine"><span>Becsült karton</span><b>~${fmt(totalBecsultKarton)}</b></div>
+            <div class="menuLine"><span>Karton az egységben</span><b>~${fmt(totalBecsultKarton)}</b></div>
             <div class="menuLine"><span>~Összegység</span><b>${fmt(totalOsszegyseg)}</b></div>
         </div>
 
@@ -2151,7 +2252,7 @@ function renderAtlagok(){
             <div class="menuLine"><span>Napi átlag súly</span><b>${fmt(avgDaySuly)} kg</b></div>
             <div class="menuLine"><span>Napi átlag tétel</span><b>${fmt(avgDayTetel)}</b></div>
             <div class="menuLine"><span>Napi átlag rendelés</span><b>${fmt(avgDayRendeles)}</b></div>
-            <div class="menuLine"><span>Napi átlag becsült karton</span><b>~${fmt(avgDayBecsultKarton)}</b></div>
+            <div class="menuLine"><span>Napi átlag karton az egységben</span><b>~${fmt(avgDayBecsultKarton)}</b></div>
             <div class="menuLine"><span>Napi átlag ~összegység</span><b>${fmt(avgDayOsszegyseg)}</b></div>
             <div class="menuLine moneyLine"><span>Napi átlag várható fizetés</span><b>${showFt(avgDayFizetes)}</b></div>
         </div>
@@ -2248,8 +2349,37 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.13</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.16</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.16 - Tétel alapú ranglista</div>
+            <div>- A ranglista pontozása súly helyett tétel alapú lett</div>
+            <div>- 1000 tételig minden 100 tétel +5 pont</div>
+            <div>- 1000 tétel felett minden további 100 tétel +10 pont</div>
+            <div>- 11:00-ig 6000 kg bónusz megmaradt</div>
+            <div>- 700-as rendelések és 700-as széria bónusz megmaradt</div>
+            <div>- ~Összegység pontozás kikerült a ranglistából</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.15 - Súly mérföldkő színek</div>
+            <div>- Felső súlysáv mérföldkövei új színeket kaptak</div>
+            <div>- 10 000 kg: bronz</div>
+            <div>- 13 000 kg: ezüst</div>
+            <div>- 15 000 kg: arany</div>
+            <div>- 18 000 kg: platina</div>
+            <div>- 20 000 kg: gyémánt</div>
+            <div>- Rejtett módban továbbra is csak a szám rejtőzik, a színjelzés megmarad</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V1.14 - Karton mód számítás javítás</div>
+            <div>- Karton mód BE esetén a ~Összegység a beírt kartonnal számol</div>
+            <div>- Karton mód KI esetén marad az eddigi becslés: tétel × 2</div>
+            <div>- A napi, havi és fizetéses statisztikák is az egységben használt kartonértéket veszik alapul</div>
+            <div>- Régi adatok kompatibilisek maradnak</div>
         </div>
 
         <div class="menuCard">
@@ -2268,7 +2398,7 @@ function renderChangelog(){
             <div>- Mai pontszám és havi pontszám számítása</div>
             <div>- 11:00-ig 6000 kg pontozás</div>
             <div>- 700-as rendelések és 700-as széria pontozása</div>
-            <div>- ~Összegység pontozás: 15 000-től +1, utána minden +1000 újabb +1</div>
+            <div>- Korábbi verzióban ~Összegység pontozás is volt, ezt V1.16 váltotta tétel alapú pontozásra</div>
             <div>- Pontszabályok magyarázata bekerült a Ranglista menübe</div>
         </div>
 
@@ -2366,8 +2496,8 @@ function renderChangelog(){
             <div>- Kiszedett rendelések száma hozzáadva</div>
             <div>- 1 hozzáadás = 1 rendelés / bolt</div>
             <div>- Egység átnevezve ~Összegységre</div>
-            <div>- ~Összegység képlete: súly + tétel + becsült karton</div>
-            <div>- Becsült karton arány: 1000 tétel ≈ 2000 karton</div>
+            <div>- ~Összegység képlete: súly + tétel + karton az egységben</div>
+            <div>- Karton mód KI esetén: 1000 tétel ≈ 2000 karton</div>
             <div>- Changelog nézetből eltűnik az adat törlése gomb</div>
             <div>- Menü görgetése finomítva</div>
         </div>
