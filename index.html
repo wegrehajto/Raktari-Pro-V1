@@ -550,6 +550,118 @@ button:active{
 }
 
 
+.inputHistoryCard{
+    margin-top:10px;
+    border-color:rgba(34,197,94,.18);
+}
+
+.historyListHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+}
+
+.undoBtn{
+    width:auto;
+    background:#334155;
+    color:#e2e8f0;
+    border:1px solid rgba(148,163,184,.18);
+    padding:9px 11px;
+    font-size:13px;
+    border-radius:12px;
+    box-shadow:none;
+    white-space:nowrap;
+}
+
+.inputEntry{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.12);
+    border-radius:14px;
+    padding:9px 10px;
+    margin-top:7px;
+    font-size:13px;
+}
+
+.inputEntryTop{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    font-weight:900;
+    color:#e2e8f0;
+    margin-bottom:4px;
+}
+
+.inputEntrySub{
+    color:var(--muted);
+    line-height:1.35;
+}
+
+.badge700{
+    display:inline-block;
+    padding:2px 7px;
+    border-radius:999px;
+    background:rgba(239,68,68,.12);
+    color:#fecaca;
+    border:1px solid rgba(239,68,68,.25);
+    font-size:11px;
+    font-weight:950;
+    margin-left:4px;
+}
+
+.archiveCard{
+    border-color:rgba(56,189,248,.20);
+}
+
+.archiveMini{
+    background:#0f172a;
+    border:1px solid rgba(56,189,248,.18);
+    border-radius:14px;
+    padding:11px;
+    margin-top:8px;
+}
+
+.copyBtn{
+    background:#1e293b;
+    color:#dbeafe;
+    border:1px solid rgba(148,163,184,.18);
+    padding:11px;
+    font-size:14px;
+    margin-top:8px;
+}
+
+.recordCard{
+    border-color:rgba(234,179,8,.20);
+}
+
+.recordGrid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+}
+
+.recordItem{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.12);
+    border-radius:14px;
+    padding:10px;
+}
+
+.recordLabel{
+    color:var(--muted);
+    font-size:12px;
+    font-weight:800;
+    margin-bottom:3px;
+}
+
+.recordValue{
+    font-size:15px;
+    font-weight:950;
+    color:#f8fafc;
+}
+
+
 @media (max-width:380px){
     body{
         padding:12px;
@@ -575,7 +687,7 @@ button:active{
 <div class="header">
     <div class="brandBlock">
         <div class="appName">⚖️ Súlyvadász</div>
-        <div class="appSub">Raktári napi összesítő</div>
+        <div class="appSub">Statisztika · rekordok · backup</div>
     </div>
     <button class="menuBtn" onclick="openMenu()">☰ Menü</button>
 </div>
@@ -620,12 +732,14 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 
 <button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
 
+<div id="inputHistoryBox"></div>
+
 <button class="closeDayBtn" onclick="closePicking()">
 📅 Szedés lezárása
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.0 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -694,6 +808,7 @@ function loadJson(key, fallback){
 let data = loadJson("data", {});
 let closedPickings = loadJson("closedPickings", []);
 let vacationDays = loadJson("vacationDays", []);
+let monthlyArchives = loadJson("monthlyArchives", []);
 
 if(!data || typeof data !== "object" || Array.isArray(data)){
     data = {};
@@ -705,6 +820,10 @@ if(!Array.isArray(closedPickings)){
 
 if(!Array.isArray(vacationDays)){
     vacationDays = [];
+}
+
+if(!Array.isArray(monthlyArchives)){
+    monthlyArchives = [];
 }
 
 function createEmptyDay(){
@@ -721,7 +840,9 @@ function createEmptyDay(){
         // A fő számításban használt kartonérték.
         // Karton mód KI: becsült karton, Karton mód BE: beírt karton.
         szamoltKarton:0,
-        osszegyseg:0
+        osszegyseg:0,
+        // Aktuális napi beviteli előzmény. Egy elem = egy hozzáadás / rendelés.
+        bevitelek:[]
     };
 }
 
@@ -755,6 +876,7 @@ function ensureTodayData(){
         data[today].osszegyseg = Number(data[today].suly || 0) + Number(data[today].tetel || 0) + Number(data[today].szamoltKarton || 0);
         changed = true;
     }
+    if(!Array.isArray(data[today].bevitelek)){ data[today].bevitelek = []; changed = true; }
 
     if(changed){
         saveData();
@@ -773,6 +895,10 @@ function saveClosed(){
 
 function saveVacationDays(){
     localStorage.setItem("vacationDays", JSON.stringify(vacationDays));
+}
+
+function saveMonthlyArchives(){
+    localStorage.setItem("monthlyArchives", JSON.stringify(monthlyArchives));
 }
 
 function fmt(n){
@@ -1104,6 +1230,122 @@ function togglePentek(){
     toggleKartonMod();
 }
 
+
+function getTodayInputs(){
+    ensureTodayData();
+    const d = data[today];
+    if(!Array.isArray(d.bevitelek)){
+        d.bevitelek = [];
+    }
+    return d.bevitelek;
+}
+
+function getEntryOsszegyseg(e){
+    if(e && e.osszegyseg !== undefined){
+        return Number(e.osszegyseg || 0);
+    }
+    return Number((e && e.suly) || 0) + Number((e && e.tetel) || 0) + Number((e && e.szamoltKarton) || 0);
+}
+
+function renderInputHistory(){
+    const box = document.getElementById("inputHistoryBox");
+    if(!box) return;
+
+    ensureTodayData();
+    const entries = getTodayInputs().slice().sort(function(a,b){
+        return Number(b.id || 0) - Number(a.id || 0);
+    });
+
+    if(entries.length === 0){
+        box.innerHTML = "";
+        return;
+    }
+
+    const lastFive = entries.slice(0,5).map(function(e){
+        const is700 = Number(e.suly || 0) > HETSZAZAS_LIMIT;
+        const kartonText = e.kartonMod ? ("beírt karton: " + showNumber(e.karton)) : ("becsült karton: " + showApprox(e.szamoltKarton));
+
+        return `
+            <div class="inputEntry">
+                <div class="inputEntryTop">
+                    <span>${e.ido || ""}${is700 ? '<span class="badge700">700-as</span>' : ''}</span>
+                    <span>${showKg(e.suly)}</span>
+                </div>
+                <div class="inputEntrySub">
+                    Tétel: <b>${showNumber(e.tetel)}</b> · ${kartonText} · ~Összegység: <b>${showNumber(getEntryOsszegyseg(e))}</b>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    box.innerHTML = `
+        <div class="menuCard inputHistoryCard">
+            <div class="historyListHeader">
+                <div>
+                    <div class="menuCardTitle">🧾 Beviteli előzmény</div>
+                    <div class="small">Mai utolsó ${fmt(Math.min(entries.length,5))} hozzáadás</div>
+                </div>
+                <button class="undoBtn" onclick="undoLastInput()">↩️ Vissza</button>
+            </div>
+            ${lastFive}
+        </div>
+    `;
+}
+
+function undoLastInput(){
+    ensureTodayData();
+    const entries = getTodayInputs();
+
+    if(entries.length === 0){
+        alert("Nincs visszavonható hozzáadás.");
+        return;
+    }
+
+    const last = entries[entries.length - 1];
+    const msg = hiddenMode
+        ? "Biztosan visszavonod az utolsó hozzáadást?"
+        : "Biztosan visszavonod az utolsó hozzáadást?\n\n" +
+          "Tétel: " + fmt(last.tetel) + "\n" +
+          "Súly: " + fmt(last.suly) + " kg\n" +
+          "~Összegység: " + fmt(getEntryOsszegyseg(last));
+
+    if(!confirm(msg)) return;
+
+    entries.pop();
+
+    const d = data[today];
+    d.tetel = Math.max(0, Number(d.tetel || 0) - Number(last.tetel || 0));
+    d.karton = Math.max(0, Number(d.karton || 0) - Number(last.karton || 0));
+    d.suly = Math.max(0, Number(d.suly || 0) - Number(last.suly || 0));
+    d.rendeles = Math.max(0, Number(d.rendeles || 0) - 1);
+    d.szamoltKarton = Math.max(0, Number(d.szamoltKarton || 0) - Number(last.szamoltKarton || 0));
+    d.osszegyseg = Math.max(0, Number(d.osszegyseg || 0) - getEntryOsszegyseg(last));
+
+    if(Number(last.suly || 0) > HETSZAZAS_LIMIT){
+        d.hetszazas = Math.max(0, Number(d.hetszazas || 0) - 1);
+    }
+
+    let streak = 0;
+    entries.forEach(function(e){
+        if(Number(e.suly || 0) > HETSZAZAS_LIMIT){
+            streak++;
+        }
+        else{
+            streak = 0;
+        }
+    });
+    d.hetszazasSzeria = streak;
+
+    if(Number(d.suly || 0) < HATARIDO_SULY){
+        d.hatarido6000 = null;
+        d.hatarido6000Ido = "";
+    }
+
+    saveData();
+    render();
+    refreshActiveMenu();
+}
+
 function add(){
     ensureTodayData();
 
@@ -1149,6 +1391,25 @@ function add(){
 
     const szamoltKarton = getSzamoltKarton(t, k, kartonMod);
     const hozzaadottOsszegyseg = s + t + szamoltKarton;
+
+    const inputEntry = {
+        id:Date.now(),
+        timestamp:new Date().toISOString(),
+        ido:getTimeShort(),
+        tetel:t,
+        karton:kartonMod ? k : 0,
+        beirtKarton:k,
+        kartonMod:kartonMod,
+        suly:s,
+        szamoltKarton:szamoltKarton,
+        osszegyseg:hozzaadottOsszegyseg,
+        hetszazas:s > HETSZAZAS_LIMIT
+    };
+
+    if(!Array.isArray(data[today].bevitelek)){
+        data[today].bevitelek = [];
+    }
+    data[today].bevitelek.push(inputEntry);
 
     data[today].tetel += t;
     data[today].karton += kartonMod ? k : 0;
@@ -1244,6 +1505,8 @@ function render(){
     if(stEl) stEl.innerText = showNumber(d.tetel);
     if(h700El) h700El.innerText = showNumber(d.hetszazas);
     if(sumEl) sumEl.innerText = showNumber(getDayOsszegyseg(d));
+
+    renderInputHistory();
 }
 
 function closePicking(){
@@ -1279,7 +1542,8 @@ function closePicking(){
         szamoltKarton: getDaySzamoltKarton(d),
         // Kompatibilitás miatt a régi mezőnév is marad, de ez már az egységben használt kartonértéket jelenti.
         becsultKarton: getDaySzamoltKarton(d),
-        osszegyseg: getDayOsszegyseg(d)
+        osszegyseg: getDayOsszegyseg(d),
+        bevitelek: Array.isArray(d.bevitelek) ? d.bevitelek.slice() : []
     };
 
     closedPickings.push(record);
@@ -1474,6 +1738,36 @@ function getDayStats(){
     });
 }
 
+
+function renderClosedInputDetails(r){
+    const entries = Array.isArray(r && r.bevitelek) ? r.bevitelek : [];
+    if(entries.length === 0) return "";
+
+    const list = entries.slice().sort(function(a,b){
+        return Number(a.id || 0) - Number(b.id || 0);
+    }).map(function(e){
+        const is700 = Number(e.suly || 0) > HETSZAZAS_LIMIT;
+        return `
+            <div class="inputEntry">
+                <div class="inputEntryTop">
+                    <span>${e.ido || ""}${is700 ? '<span class="badge700">700-as</span>' : ''}</span>
+                    <span>${fmt(e.suly)} kg</span>
+                </div>
+                <div class="inputEntrySub">
+                    Tétel: <b>${fmt(e.tetel)}</b> · Karton az egységben: <b>~${fmt(e.szamoltKarton)}</b> · ~Összegység: <b>${fmt(getEntryOsszegyseg(e))}</b>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    return `
+        <details style="margin-top:8px;">
+            <summary class="small" style="cursor:pointer;font-weight:900;">Beviteli előzmény (${fmt(entries.length)} db)</summary>
+            ${list}
+        </details>
+    `;
+}
+
 function renderElozmenyek(){
     const days = getDayStats();
     const vacations = getVacationStats(days);
@@ -1540,6 +1834,7 @@ function renderElozmenyek(){
                                     <div>Kiszedett rendelések: ${fmt(rendeles)}</div>
                                     <div>Karton az egységben: ~${fmt(becsultKarton)}</div>
                                     <div>~Összegység: <b>${fmt(osszegyseg)}</b></div>
+                                    ${renderClosedInputDetails(r)}
                                     <button class="deleteMiniBtn" onclick="deleteClosedPicking(${Number(r.id || 0)})">
                                         🗑️ Ezt a lezárást törlöm
                                     </button>
@@ -1796,6 +2091,7 @@ function getMonthStats(days){
         map[honap].karton += Number(d.karton || 0);
         map[honap].suly += Number(d.suly || 0);
         map[honap].rendeles += Number(d.rendeles || 0);
+        map[honap].hetszazas += Number(d.hetszazas || 0);
         map[honap].becsultKarton += Number(d.becsultKarton || 0);
         map[honap].osszegyseg += Number(d.osszegyseg || 0);
     });
@@ -1894,6 +2190,225 @@ function getPointMonthStats(pointDays){
     return Object.values(map).sort(function(a,b){
         return b.pont - a.pont || b.honap.localeCompare(a.honap);
     });
+}
+
+
+function getMonthSummaryData(monthKey){
+    const days = getDayStats();
+    const months = getMonthStats(days);
+    const vacationStats = getVacationStats(days);
+    const vacationMonthStats = getVacationMonthStats(vacationStats);
+    const m = months.find(function(x){ return x.honap === monthKey; }) || {
+        honap:monthKey,
+        napok:0,
+        tetel:0,
+        karton:0,
+        suly:0,
+        rendeles:0,
+        hetszazas:0,
+        becsultKarton:0,
+        osszegyseg:0
+    };
+
+    const vacationCount = getVacationDaysForMonth(vacationMonthStats, monthKey);
+    const vacationPay = getVacationPayForMonth(vacationMonthStats, monthKey);
+    const workPay = getBecsultFizetes(m.osszegyseg);
+
+    return {
+        honap:monthKey,
+        label:getMonthLabel(monthKey),
+        napok:Number(m.napok || 0),
+        szabadsag:Number(vacationCount || 0),
+        suly:Number(m.suly || 0),
+        tetel:Number(m.tetel || 0),
+        karton:Number(m.karton || 0),
+        rendeles:Number(m.rendeles || 0),
+        hetszazas:Number(m.hetszazas || 0),
+        szamoltKarton:Number(m.becsultKarton || 0),
+        osszegyseg:Number(m.osszegyseg || 0),
+        munkabolFizetes:workPay,
+        szabadsagFizetes:vacationPay,
+        osszesFizetes:workPay + vacationPay,
+        atlagSuly:m.napok ? Math.round(Number(m.suly || 0) / m.napok) : 0,
+        atlagTetel:m.napok ? Math.round(Number(m.tetel || 0) / m.napok) : 0,
+        atlagOsszegyseg:m.napok ? Math.round(Number(m.osszegyseg || 0) / m.napok) : 0,
+        atlagFizetes:m.napok ? Math.round(workPay / m.napok) : 0
+    };
+}
+
+function renderMonthClosingCard(monthKey){
+    const s = getMonthSummaryData(monthKey);
+
+    return `
+        <div class="menuCard archiveCard">
+            <div class="menuCardTitle">📦 Hónapzáró összesítő - ${s.label}</div>
+            <div class="menuLine"><span>Lezárt munkanapok</span><b>${fmt(s.napok)}</b></div>
+            <div class="menuLine"><span>Szabadság napok</span><b>${fmt(s.szabadsag)}</b></div>
+            <div class="menuLine"><span>Súly</span><b>${fmt(s.suly)} kg</b></div>
+            <div class="menuLine"><span>Tétel</span><b>${fmt(s.tetel)}</b></div>
+            <div class="menuLine"><span>700-as</span><b>${fmt(s.hetszazas)}</b></div>
+            <div class="menuLine"><span>~Összegység</span><b>${fmt(s.osszegyseg)}</b></div>
+            <div class="menuLine moneyLine"><span>Munkából várható</span><b>${showFt(s.munkabolFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(s.szabadsagFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Havi összes várható</span><b>${showFt(s.osszesFizetes)}</b></div>
+            <div class="menuLine"><span>Átlag súly / munkanap</span><b>${fmt(s.atlagSuly)} kg</b></div>
+            <div class="menuLine"><span>Átlag tétel / munkanap</span><b>${fmt(s.atlagTetel)}</b></div>
+            <div class="menuLine moneyLine"><span>Átlag várható / munkanap</span><b>${showFt(s.atlagFizetes)}</b></div>
+            <button class="copyBtn" onclick="copyMonthSummary('${monthKey}')">📋 Havi összesítő másolása</button>
+        </div>
+    `;
+}
+
+function getRecordData(days, months){
+    if(!days.length){
+        return null;
+    }
+
+    const bestSulyDay = days.reduce(function(best,d){ return d.suly > best.suly ? d : best; }, days[0]);
+    const bestTetelDay = days.reduce(function(best,d){ return d.tetel > best.tetel ? d : best; }, days[0]);
+    const best700Day = days.reduce(function(best,d){ return d.hetszazas > best.hetszazas ? d : best; }, days[0]);
+    const bestOsszegysegDay = days.reduce(function(best,d){ return d.osszegyseg > best.osszegyseg ? d : best; }, days[0]);
+    const bestPayDay = bestOsszegysegDay;
+    const bestMonthTetel = months.length ? months.reduce(function(best,m){ return m.tetel > best.tetel ? m : best; }, months[0]) : null;
+    const bestMonthPay = months.length ? months.reduce(function(best,m){ return m.osszegyseg > best.osszegyseg ? m : best; }, months[0]) : null;
+
+    return {
+        bestSulyDay:bestSulyDay,
+        bestTetelDay:bestTetelDay,
+        best700Day:best700Day,
+        bestOsszegysegDay:bestOsszegysegDay,
+        bestPayDay:bestPayDay,
+        bestMonthTetel:bestMonthTetel,
+        bestMonthPay:bestMonthPay
+    };
+}
+
+function renderRecordsCard(days, months){
+    const r = getRecordData(days, months);
+
+    if(!r){
+        return `
+            <div class="menuCard recordCard">
+                <div class="menuCardTitle">🏆 Rekordok</div>
+                <div class="empty">Még nincs elég lezárt adat rekordokhoz.</div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="menuCard recordCard">
+            <div class="menuCardTitle">🏆 Rekordok</div>
+            <div class="recordGrid">
+                <div class="recordItem"><div class="recordLabel">Legnagyobb súlyú nap</div><div class="recordValue">${r.bestSulyDay.datum} · ${fmt(r.bestSulyDay.suly)} kg</div></div>
+                <div class="recordItem"><div class="recordLabel">Legtöbb tételes nap</div><div class="recordValue">${r.bestTetelDay.datum} · ${fmt(r.bestTetelDay.tetel)} tétel</div></div>
+                <div class="recordItem"><div class="recordLabel">Legtöbb 700-as egy napon</div><div class="recordValue">${r.best700Day.datum} · ${fmt(r.best700Day.hetszazas)} db</div></div>
+                <div class="recordItem"><div class="recordLabel">Legjobb ~összegység</div><div class="recordValue">${r.bestOsszegysegDay.datum} · ${fmt(r.bestOsszegysegDay.osszegyseg)}</div></div>
+                <div class="recordItem"><div class="recordLabel">Legjobb becsült fizus nap</div><div class="recordValue">${r.bestPayDay.datum} · ${showFt(getBecsultFizetes(r.bestPayDay.osszegyseg))}</div></div>
+                ${r.bestMonthTetel ? `<div class="recordItem"><div class="recordLabel">Legjobb hónap tétel alapján</div><div class="recordValue">${getMonthLabel(r.bestMonthTetel.honap)} · ${fmt(r.bestMonthTetel.tetel)} tétel</div></div>` : ""}
+                ${r.bestMonthPay ? `<div class="recordItem"><div class="recordLabel">Legjobb hónap várható fizetés alapján</div><div class="recordValue">${getMonthLabel(r.bestMonthPay.honap)} · ${showFt(getBecsultFizetes(r.bestMonthPay.osszegyseg))}</div></div>` : ""}
+            </div>
+        </div>
+    `;
+}
+
+function getMonthSummaryText(monthKey){
+    const s = getMonthSummaryData(monthKey);
+    return "📦 Súlyvadász hónapzáró - " + s.label + "\n\n" +
+        "Lezárt munkanapok: " + fmt(s.napok) + "\n" +
+        "Szabadság napok: " + fmt(s.szabadsag) + "\n" +
+        "Súly: " + fmt(s.suly) + " kg\n" +
+        "Tétel: " + fmt(s.tetel) + "\n" +
+        "700-as: " + fmt(s.hetszazas) + "\n" +
+        "~Összegység: " + fmt(s.osszegyseg) + "\n" +
+        "Munkából várható: " + fmt(s.munkabolFizetes) + " Ft\n" +
+        "Szabadság becsült: " + fmt(s.szabadsagFizetes) + " Ft\n" +
+        "Havi összes várható: " + fmt(s.osszesFizetes) + " Ft\n" +
+        "Átlag / munkanap: " + fmt(s.atlagFizetes) + " Ft";
+}
+
+function copyMonthSummary(monthKey){
+    const text = getMonthSummaryText(monthKey);
+
+    if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){
+            alert("Havi összesítő másolva.");
+        }).catch(function(){
+            prompt("Másold ki a havi összesítőt:", text);
+        });
+    }
+    else{
+        prompt("Másold ki a havi összesítőt:", text);
+    }
+}
+
+function archiveCurrentMonth(){
+    const monthKey = today.slice(0,7);
+    const summary = getMonthSummaryData(monthKey);
+    const existing = monthlyArchives.find(function(a){ return a.honap === monthKey; });
+
+    const active = data[today] || createEmptyDay();
+    const activeHasData = hasAnyDayData(active);
+
+    let msg = "Biztosan archiválod ezt a hónapot?\n\n" + getMonthSummaryText(monthKey);
+    if(activeHasData){
+        msg += "\n\nFigyelem: a mai nyitott, még le nem zárt adat nincs benne az archívumban. Előbb zárd le a napot, ha azt is menteni akarod.";
+    }
+    if(existing){
+        msg += "\n\nEhhez a hónaphoz már van archívum. Az új archívum felülírja a régit.";
+    }
+
+    if(!confirm(msg)) return;
+
+    const archive = {
+        id:Date.now(),
+        createdAt:new Date().toISOString(),
+        createdAtLocal:new Date().toLocaleString("hu-HU"),
+        honap:monthKey,
+        label:summary.label,
+        summary:summary
+    };
+
+    monthlyArchives = monthlyArchives.filter(function(a){ return a.honap !== monthKey; });
+    monthlyArchives.push(archive);
+    monthlyArchives.sort(function(a,b){ return String(b.honap).localeCompare(String(a.honap)); });
+    saveMonthlyArchives();
+    refreshActiveMenu();
+    alert("Havi archívum mentve.");
+}
+
+function deleteMonthlyArchive(id){
+    const item = monthlyArchives.find(function(a){ return Number(a.id || 0) === Number(id || 0); });
+    if(!item) return;
+
+    if(!confirm("Törlöd ezt a havi archívumot?\n\n" + (item.label || item.honap || ""))) return;
+
+    monthlyArchives = monthlyArchives.filter(function(a){ return Number(a.id || 0) !== Number(id || 0); });
+    saveMonthlyArchives();
+    refreshActiveMenu();
+    alert("Havi archívum törölve.");
+}
+
+function renderMonthlyArchivesList(){
+    if(!Array.isArray(monthlyArchives) || monthlyArchives.length === 0){
+        return `<div class="empty">Még nincs archivált hónap.</div>`;
+    }
+
+    return monthlyArchives.slice().sort(function(a,b){
+        return String(b.honap).localeCompare(String(a.honap));
+    }).map(function(a){
+        const s = a.summary || {};
+        return `
+            <div class="archiveMini">
+                <div><b>${a.label || getMonthLabel(a.honap)}</b></div>
+                <div class="small">Mentve: ${a.createdAtLocal || "ismeretlen"}</div>
+                <div class="menuLine"><span>Súly</span><b>${fmt(s.suly)} kg</b></div>
+                <div class="menuLine"><span>Tétel</span><b>${fmt(s.tetel)}</b></div>
+                <div class="menuLine moneyLine"><span>Havi összes várható</span><b>${showFt(s.osszesFizetes)}</b></div>
+                <button class="copyBtn" onclick="copyMonthSummary('${a.honap}')">📋 Mostani összesítő másolása</button>
+                <button class="deleteMiniBtn" onclick="deleteMonthlyArchive(${Number(a.id || 0)})">🗑️ Archívum törlése</button>
+            </div>
+        `;
+    }).join("");
 }
 
 function renderAtlagok(){
@@ -2093,6 +2608,10 @@ function renderAtlagok(){
 
         ${vacationSummaryHtml}
 
+        ${renderMonthClosingCard(currentMonthKey)}
+
+        ${renderRecordsCard(days, months)}
+
         <div class="menuCard">
             <div class="menuCardTitle">🗓️ Havi lebontás</div>
             <div class="small">Hónaponként látod az összesített munkanapokat, a szabadság napokat, az adott hónap napi átlagait és a várható becsült fizetést.</div>
@@ -2184,6 +2703,19 @@ function renderBeallitasok(){
             <input id="backupFileInput" type="file" accept="application/json,.json" style="display:none" onchange="importBackupFromFile(this)">
         </div>
 
+
+
+        <div class="menuCard archiveCard">
+            <div class="menuCardTitle">📦 Havi archiválás</div>
+            <div class="settingNote">
+                Hónap végén készíthetsz egy külön havi pillanatképet. Ez a biztonsági mentésbe is bekerül, így visszatöltés után is megmarad.
+            </div>
+            <button class="settingBtn active" onclick="archiveCurrentMonth()">
+                📦 Aktuális hónap archiválása
+            </button>
+            <div style="margin-top:10px;">${renderMonthlyArchivesList()}</div>
+        </div>
+
         <div class="menuCard">
             <div class="menuCardTitle">🧪 Tesztelés / adatkezelés</div>
             <div class="settingNote">
@@ -2198,8 +2730,19 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V1.18</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.0</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.0 - Nagy statisztikai csomag</div>
+            <div>- Beviteli előzmény hozzáadva a főképernyőre</div>
+            <div>- Utolsó hozzáadás gyors visszavonása</div>
+            <div>- Hónapzáró összesítő hozzáadva</div>
+            <div>- Rekordok rész hozzáadva</div>
+            <div>- Havi archiválás hozzáadva</div>
+            <div>- Biztonsági mentés már az új előzményeket és archívumokat is menti</div>
+            <div>- Ranglista / online toplista nincs benne, az app statisztikai irányban marad</div>
         </div>
 
         <div class="menuCard">
@@ -2395,12 +2938,13 @@ function getBackupPayload(){
 
     return {
         app:"Súlyvadász",
-        backupVersion:"1.18",
+        backupVersion:"2.0",
         exportedAt:new Date().toISOString(),
         exportedAtLocal:new Date().toLocaleString("hu-HU"),
         data:data,
         closedPickings:closedPickings,
         vacationDays:vacationDays,
+        monthlyArchives:monthlyArchives,
         settings:{
             hiddenMode:hiddenMode,
             kartonMod:kartonMod,
@@ -2459,6 +3003,7 @@ function importBackupFromFile(input){
             const restoredData = backup.data || (backup.keys ? backup.keys.data : null);
             const restoredClosed = backup.closedPickings || (backup.keys ? backup.keys.closedPickings : null);
             const restoredVacation = backup.vacationDays || (backup.keys ? backup.keys.vacationDays : []);
+            const restoredArchives = backup.monthlyArchives || (backup.keys ? backup.keys.monthlyArchives : []);
             const restoredSettings = backup.settings || {};
 
             if(!restoredData || typeof restoredData !== "object" || Array.isArray(restoredData)){
@@ -2471,6 +3016,10 @@ function importBackupFromFile(input){
 
             if(restoredVacation && !Array.isArray(restoredVacation)){
                 throw new Error("Hibás a szabadság napok listája.");
+            }
+
+            if(restoredArchives && !Array.isArray(restoredArchives)){
+                throw new Error("Hibás a havi archívumok listája.");
             }
 
             const biztos = confirm(
@@ -2487,6 +3036,7 @@ function importBackupFromFile(input){
             data = restoredData;
             closedPickings = restoredClosed;
             vacationDays = restoredVacation || [];
+            monthlyArchives = restoredArchives || [];
             hiddenMode = !!restoredSettings.hiddenMode;
             kartonMod = !!restoredSettings.kartonMod;
 
@@ -2495,7 +3045,8 @@ function importBackupFromFile(input){
 
             saveData();
             saveClosed();
-            saveVacation();
+            saveVacationDays();
+            saveMonthlyArchives();
 
             localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
             localStorage.setItem("kartonMod", kartonMod ? "1" : "0");
@@ -2638,10 +3189,12 @@ function deleteAllData(){
     localStorage.removeItem("data");
     localStorage.removeItem("closedPickings");
     localStorage.removeItem("vacationDays");
+    localStorage.removeItem("monthlyArchives");
 
     data = {};
     closedPickings = [];
     vacationDays = [];
+    monthlyArchives = [];
 
     today = getTodayKey();
     data[today] = createEmptyDay();
