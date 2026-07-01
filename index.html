@@ -610,6 +610,82 @@ button:active{
     margin-left:4px;
 }
 
+
+
+.goalTracker{
+    background:linear-gradient(180deg, rgba(30,41,59,.92), rgba(15,23,42,.92));
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:18px;
+    padding:11px 12px;
+    margin-bottom:12px;
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
+}
+
+.goalTop{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    color:#cbd5e1;
+    font-weight:850;
+}
+
+.goalLevel{
+    color:#fff;
+    font-weight:950;
+}
+
+.goalHint{
+    margin-top:5px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.35;
+}
+
+.goalBar{
+    margin-top:9px;
+    width:100%;
+    height:8px;
+    background:#0f172a;
+    border-radius:999px;
+    overflow:hidden;
+    border:1px solid rgba(148,163,184,.12);
+}
+
+.goalFill{
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg, #22c55e, #eab308);
+    width:0%;
+}
+
+.backupReminderBox{
+    display:none;
+    background:rgba(234,179,8,.12);
+    color:#fde68a;
+    border:1px solid rgba(234,179,8,.28);
+    border-left:4px solid #eab308;
+    border-radius:16px;
+    padding:10px 12px;
+    margin-bottom:12px;
+    font-size:13px;
+    font-weight:800;
+    line-height:1.35;
+}
+
+.evalBadge{
+    display:inline-block;
+    background:rgba(34,197,94,.12);
+    color:#bbf7d0;
+    border:1px solid rgba(34,197,94,.22);
+    border-radius:999px;
+    padding:4px 9px;
+    font-size:12px;
+    font-weight:950;
+    margin-bottom:8px;
+}
+
 .archiveCard{
     border-color:rgba(56,189,248,.20);
 }
@@ -687,7 +763,7 @@ button:active{
 <div class="header">
     <div class="brandBlock">
         <div class="appName">⚖️ Súlyvadász</div>
-        <div class="appSub">Statisztika · rekordok · backup</div>
+        <div class="appSub">Statisztika · rekordok · célkövető</div>
     </div>
     <button class="menuBtn" onclick="openMenu()">☰ Menü</button>
 </div>
@@ -695,6 +771,10 @@ button:active{
 <div id="weightBanner" class="weightBanner">
     0 kg
 </div>
+
+<div id="goalTracker" class="goalTracker"></div>
+
+<div id="backupReminderBox" class="backupReminderBox"></div>
 
 <div id="quoteBox" class="quoteBox">
     Mai bölcsesség...
@@ -739,7 +819,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.0 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.2 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -909,6 +989,15 @@ const FIZETES_SZORZO = 1.64;
 const HETSZAZAS_LIMIT = 680;
 const HATARIDO_SULY = 6000;
 const HATARIDO_ORA = 11;
+const BACKUP_REMINDER_DAYS = 7;
+
+const SULY_MERFOLDKOVEK = [
+    {key:"bronz", label:"Bronz", target:10000, emoji:"🥉"},
+    {key:"ezust", label:"Ezüst", target:13000, emoji:"🥈"},
+    {key:"arany", label:"Arany", target:15000, emoji:"🥇"},
+    {key:"platina", label:"Platina", target:18000, emoji:"💠"},
+    {key:"gyemant", label:"Gyémánt", target:20000, emoji:"💎"}
+];
 
 function fmtDecimal(n){
     return Number(n || 0).toLocaleString("hu-HU", {
@@ -931,6 +1020,165 @@ function showRate(){
 
 function showPont(n){
     return hiddenMode ? "•••• pont" : fmt(n) + " pont";
+}
+
+function getCurrentSulyLevel(suly){
+    const s = Number(suly || 0);
+    let level = {key:"alap", label:"Alap", target:0, emoji:"🔴"};
+
+    SULY_MERFOLDKOVEK.forEach(function(m){
+        if(s >= m.target){
+            level = m;
+        }
+    });
+
+    return level;
+}
+
+function getNextSulyLevel(suly){
+    const s = Number(suly || 0);
+    return SULY_MERFOLDKOVEK.find(function(m){
+        return s < m.target;
+    }) || null;
+}
+
+function getDailyEvaluation(d){
+    const suly = Number((d && d.suly) || 0);
+    const hetszazas = Number((d && d.hetszazas) || 0);
+    const maxSzeria = Number((d && (d.hetszazasSzeriaMax || d.hetszazasSzeria)) || 0);
+    const level = getCurrentSulyLevel(suly);
+
+    let label = level.label + " nap";
+    if(suly < 10000){
+        label = "Alap nap";
+    }
+
+    let extra = [];
+    if(hetszazas > 0){
+        extra.push(fmt(hetszazas) + " db 700-as");
+    }
+    if(maxSzeria >= 3){
+        extra.push(fmt(maxSzeria) + "-as 700-as széria");
+    }
+
+    return {
+        label:level.emoji + " " + label,
+        level:level,
+        extra:extra.join(" · "),
+        text:level.emoji + " " + label + (extra.length ? " · " + extra.join(" · ") : "")
+    };
+}
+
+function renderGoalTracker(){
+    const box = document.getElementById("goalTracker");
+    if(!box) return;
+
+    ensureTodayData();
+    const d = data[today] || createEmptyDay();
+    const suly = Number(d.suly || 0);
+    const current = getCurrentSulyLevel(suly);
+    const next = getNextSulyLevel(suly);
+    const evalInfo = getDailyEvaluation(d);
+
+    if(!next){
+        box.innerHTML = `
+            <div class="goalTop">
+                <span>Mai szint</span>
+                <span class="goalLevel">${current.emoji} ${current.label}</span>
+            </div>
+            <div class="goalHint">Gyémánt szint elérve. ${evalInfo.extra ? evalInfo.extra : "Ez már nagyon erős nap."}</div>
+            <div class="goalBar"><div class="goalFill" style="width:100%"></div></div>
+        `;
+        return;
+    }
+
+    const prevTarget = current && current.target ? current.target : 0;
+    const range = Math.max(1, Number(next.target || 0) - prevTarget);
+    const rawProgress = Math.max(0, Math.min(100, Math.round(((suly - prevTarget) / range) * 100)));
+
+    if(hiddenMode){
+        box.innerHTML = `
+            <div class="goalTop">
+                <span>Mai szint</span>
+                <span class="goalLevel">${current.emoji} ${current.label}</span>
+            </div>
+            <div class="goalHint">Következő szint: ${next.emoji} ${next.label}. Rejtett módban a pontos kg nem látszik.</div>
+        `;
+        return;
+    }
+
+    const remaining = Math.max(0, Number(next.target || 0) - suly);
+
+    box.innerHTML = `
+        <div class="goalTop">
+            <span>Következő szint: <span class="goalLevel">${next.emoji} ${next.label}</span></span>
+            <span>${fmt(rawProgress)}%</span>
+        </div>
+        <div class="goalHint">Még ${fmt(remaining)} kg kell a ${fmt(next.target)} kg-os mérföldkőhöz. Mai értékelés: ${evalInfo.text}</div>
+        <div class="goalBar"><div class="goalFill" style="width:${rawProgress}%"></div></div>
+    `;
+}
+
+function getDaysSince(dateString){
+    if(!dateString) return null;
+    const last = new Date(dateString);
+    if(isNaN(last.getTime())) return null;
+    const now = new Date();
+    return Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function hasAnySavedWorkData(){
+    return (Array.isArray(closedPickings) && closedPickings.length > 0) ||
+        (Array.isArray(vacationDays) && vacationDays.length > 0) ||
+        (Array.isArray(monthlyArchives) && monthlyArchives.length > 0) ||
+        Object.keys(data || {}).some(function(key){
+            const d = data[key] || {};
+            return Number(d.tetel || 0) > 0 || Number(d.suly || 0) > 0 || Number(d.rendeles || 0) > 0;
+        });
+}
+
+function getBackupReminderInfo(){
+    if(!hasAnySavedWorkData()){
+        return {needed:false, text:"Még nincs mentendő adat."};
+    }
+
+    const last = localStorage.getItem("lastBackupAt") || "";
+    const lastLocal = localStorage.getItem("lastBackupAtLocal") || "";
+    const days = getDaysSince(last);
+
+    if(days === null){
+        return {
+            needed:true,
+            text:"Még nincs biztonsági mentés. Érdemes most kimenteni az adatokat fájlba."
+        };
+    }
+
+    if(days >= BACKUP_REMINDER_DAYS){
+        return {
+            needed:true,
+            text:"Már " + fmt(days) + " napja nem készült biztonsági mentés. Utolsó mentés: " + (lastLocal || last)
+        };
+    }
+
+    return {
+        needed:false,
+        text:"Utolsó biztonsági mentés: " + (lastLocal || last)
+    };
+}
+
+function renderBackupReminderBox(){
+    const box = document.getElementById("backupReminderBox");
+    if(!box) return;
+
+    const info = getBackupReminderInfo();
+    if(!info.needed){
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    box.style.display = "block";
+    box.innerHTML = "💾 " + info.text;
 }
 
 function isBeforeOrAtDeadline(){
@@ -1507,6 +1755,8 @@ function render(){
     if(sumEl) sumEl.innerText = showNumber(getDayOsszegyseg(d));
 
     renderInputHistory();
+    renderGoalTracker();
+    renderBackupReminderBox();
 }
 
 function closePicking(){
@@ -1563,8 +1813,11 @@ function closePicking(){
         document.getElementById("t").focus();
     }, 100);
 
+    const evalInfo = getDailyEvaluation(record);
+
     alert(
         "Szedés lezárva!\n\n" +
+        "Értékelés: " + evalInfo.text + "\n" +
         "Súly: " + showKg(record.suly) + "\n" +
         "Tétel: " + showNumber(record.tetel) + "\n" +
         "Karton: " + showNumber(record.karton) + "\n" +
@@ -1801,6 +2054,7 @@ function renderElozmenyek(){
                 </summary>
 
                 <div class="historyDetails">
+                    <div class="evalBadge">${getDailyEvaluation(d).text}</div>
                     <div class="menuLine"><span>Súly</span><b>${fmt(d.suly)} kg</b></div>
                     <div class="menuLine"><span>Tétel</span><b>${fmt(d.tetel)}</b></div>
                     <div class="menuLine"><span>Karton</span><b>${fmt(d.karton)}</b></div>
@@ -1828,6 +2082,7 @@ function renderElozmenyek(){
                             return `
                                 <div class="historyPick">
                                     <div><b>${r.ido || ""}</b></div>
+                                    <div class="evalBadge">${getDailyEvaluation(r).text}</div>
                                     <div>Súly: ${fmt(suly)} kg</div>
                                     <div>Tétel: ${fmt(tetel)}</div>
                                     <div>Karton: ${fmt(karton)}</div>
@@ -2081,6 +2336,7 @@ function getMonthStats(days){
                 suly:0,
                 rendeles:0,
                 hetszazas:0,
+                hetszazasSzeriaMax:0,
                 becsultKarton:0,
                 osszegyseg:0
             };
@@ -2092,6 +2348,9 @@ function getMonthStats(days){
         map[honap].suly += Number(d.suly || 0);
         map[honap].rendeles += Number(d.rendeles || 0);
         map[honap].hetszazas += Number(d.hetszazas || 0);
+        if(Number(d.hetszazasSzeriaMax || 0) > Number(map[honap].hetszazasSzeriaMax || 0)){
+            map[honap].hetszazasSzeriaMax = Number(d.hetszazasSzeriaMax || 0);
+        }
         map[honap].becsultKarton += Number(d.becsultKarton || 0);
         map[honap].osszegyseg += Number(d.osszegyseg || 0);
     });
@@ -2206,6 +2465,7 @@ function getMonthSummaryData(monthKey){
         suly:0,
         rendeles:0,
         hetszazas:0,
+        hetszazasSzeriaMax:0,
         becsultKarton:0,
         osszegyseg:0
     };
@@ -2224,6 +2484,7 @@ function getMonthSummaryData(monthKey){
         karton:Number(m.karton || 0),
         rendeles:Number(m.rendeles || 0),
         hetszazas:Number(m.hetszazas || 0),
+        hetszazasSzeriaMax:Number(m.hetszazasSzeriaMax || 0),
         szamoltKarton:Number(m.becsultKarton || 0),
         osszegyseg:Number(m.osszegyseg || 0),
         munkabolFizetes:workPay,
@@ -2247,6 +2508,7 @@ function renderMonthClosingCard(monthKey){
             <div class="menuLine"><span>Súly</span><b>${fmt(s.suly)} kg</b></div>
             <div class="menuLine"><span>Tétel</span><b>${fmt(s.tetel)}</b></div>
             <div class="menuLine"><span>700-as</span><b>${fmt(s.hetszazas)}</b></div>
+            <div class="menuLine"><span>Leghosszabb 700-as széria</span><b>${fmt(s.hetszazasSzeriaMax)}</b></div>
             <div class="menuLine"><span>~Összegység</span><b>${fmt(s.osszegyseg)}</b></div>
             <div class="menuLine moneyLine"><span>Munkából várható</span><b>${showFt(s.munkabolFizetes)}</b></div>
             <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(s.szabadsagFizetes)}</b></div>
@@ -2267,19 +2529,25 @@ function getRecordData(days, months){
     const bestSulyDay = days.reduce(function(best,d){ return d.suly > best.suly ? d : best; }, days[0]);
     const bestTetelDay = days.reduce(function(best,d){ return d.tetel > best.tetel ? d : best; }, days[0]);
     const best700Day = days.reduce(function(best,d){ return d.hetszazas > best.hetszazas ? d : best; }, days[0]);
+    const best700StreakDay = days.reduce(function(best,d){ return Number(d.hetszazasSzeriaMax || 0) > Number(best.hetszazasSzeriaMax || 0) ? d : best; }, days[0]);
     const bestOsszegysegDay = days.reduce(function(best,d){ return d.osszegyseg > best.osszegyseg ? d : best; }, days[0]);
     const bestPayDay = bestOsszegysegDay;
     const bestMonthTetel = months.length ? months.reduce(function(best,m){ return m.tetel > best.tetel ? m : best; }, months[0]) : null;
     const bestMonthPay = months.length ? months.reduce(function(best,m){ return m.osszegyseg > best.osszegyseg ? m : best; }, months[0]) : null;
+    const bestMonth700 = months.length ? months.reduce(function(best,m){ return Number(m.hetszazas || 0) > Number(best.hetszazas || 0) ? m : best; }, months[0]) : null;
+    const bestMonth700Streak = months.length ? months.reduce(function(best,m){ return Number(m.hetszazasSzeriaMax || 0) > Number(best.hetszazasSzeriaMax || 0) ? m : best; }, months[0]) : null;
 
     return {
         bestSulyDay:bestSulyDay,
         bestTetelDay:bestTetelDay,
         best700Day:best700Day,
+        best700StreakDay:best700StreakDay,
         bestOsszegysegDay:bestOsszegysegDay,
         bestPayDay:bestPayDay,
         bestMonthTetel:bestMonthTetel,
-        bestMonthPay:bestMonthPay
+        bestMonthPay:bestMonthPay,
+        bestMonth700:bestMonth700,
+        bestMonth700Streak:bestMonth700Streak
     };
 }
 
@@ -2302,9 +2570,12 @@ function renderRecordsCard(days, months){
                 <div class="recordItem"><div class="recordLabel">Legnagyobb súlyú nap</div><div class="recordValue">${r.bestSulyDay.datum} · ${fmt(r.bestSulyDay.suly)} kg</div></div>
                 <div class="recordItem"><div class="recordLabel">Legtöbb tételes nap</div><div class="recordValue">${r.bestTetelDay.datum} · ${fmt(r.bestTetelDay.tetel)} tétel</div></div>
                 <div class="recordItem"><div class="recordLabel">Legtöbb 700-as egy napon</div><div class="recordValue">${r.best700Day.datum} · ${fmt(r.best700Day.hetszazas)} db</div></div>
+                <div class="recordItem"><div class="recordLabel">Leghosszabb 700-as széria</div><div class="recordValue">${r.best700StreakDay.datum} · ${fmt(r.best700StreakDay.hetszazasSzeriaMax || 0)} egymás után</div></div>
                 <div class="recordItem"><div class="recordLabel">Legjobb ~összegység</div><div class="recordValue">${r.bestOsszegysegDay.datum} · ${fmt(r.bestOsszegysegDay.osszegyseg)}</div></div>
                 <div class="recordItem"><div class="recordLabel">Legjobb becsült fizus nap</div><div class="recordValue">${r.bestPayDay.datum} · ${showFt(getBecsultFizetes(r.bestPayDay.osszegyseg))}</div></div>
                 ${r.bestMonthTetel ? `<div class="recordItem"><div class="recordLabel">Legjobb hónap tétel alapján</div><div class="recordValue">${getMonthLabel(r.bestMonthTetel.honap)} · ${fmt(r.bestMonthTetel.tetel)} tétel</div></div>` : ""}
+                ${r.bestMonth700 ? `<div class="recordItem"><div class="recordLabel">Legjobb 700-as hónap</div><div class="recordValue">${getMonthLabel(r.bestMonth700.honap)} · ${fmt(r.bestMonth700.hetszazas)} db</div></div>` : ""}
+                ${r.bestMonth700Streak ? `<div class="recordItem"><div class="recordLabel">Legjobb havi 700-as széria</div><div class="recordValue">${getMonthLabel(r.bestMonth700Streak.honap)} · ${fmt(r.bestMonth700Streak.hetszazasSzeriaMax || 0)} egymás után</div></div>` : ""}
                 ${r.bestMonthPay ? `<div class="recordItem"><div class="recordLabel">Legjobb hónap várható fizetés alapján</div><div class="recordValue">${getMonthLabel(r.bestMonthPay.honap)} · ${showFt(getBecsultFizetes(r.bestMonthPay.osszegyseg))}</div></div>` : ""}
             </div>
         </div>
@@ -2602,6 +2873,8 @@ function renderAtlagok(){
             karton:0,
             suly:0,
             rendeles:0,
+            hetszazas:0,
+            hetszazasSzeriaMax:0,
             becsultKarton:0,
             osszegyseg:0
         };
@@ -2640,6 +2913,8 @@ function renderAtlagok(){
                     <div class="menuLine"><span>Kiszedett rendelések</span><b>${fmt(m.rendeles)}</b></div>
                     <div class="menuLine"><span>Súly</span><b>${fmt(m.suly)} kg</b></div>
                     <div class="menuLine"><span>Tétel</span><b>${fmt(m.tetel)}</b></div>
+                    <div class="menuLine"><span>700-as</span><b>${fmt(m.hetszazas || 0)}</b></div>
+                    <div class="menuLine"><span>Leghosszabb 700-as széria</span><b>${fmt(m.hetszazasSzeriaMax || 0)}</b></div>
                     <div class="menuLine"><span>Karton</span><b>${fmt(m.karton)}</b></div>
                     <div class="menuLine"><span>Karton az egységben</span><b>~${fmt(m.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(m.osszegyseg)}</b></div>
@@ -2679,6 +2954,14 @@ function renderAtlagok(){
             <div class="menuLine moneyLine"><span>Napi átlag várható</span><b>${showFt(avgDayFizetes)}</b></div>
             <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
             <div class="moneyHint">Becslés: ~összegység × 1,64 Ft. Az aktuális havi érték a lezárt napokat, a mai még le nem zárt adatot és a rögzített szabadságokat is beleszámolja.</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🧭 Mai teljesítmény</div>
+            <div class="evalBadge">${getDailyEvaluation(d).text}</div>
+            <div class="menuLine"><span>Aktuális szint</span><b>${getCurrentSulyLevel(Number(d.suly || 0)).emoji} ${getCurrentSulyLevel(Number(d.suly || 0)).label}</b></div>
+            <div class="menuLine"><span>Mai 700-as széria</span><b>${fmt(Number(d.hetszazasSzeria || 0))}</b></div>
+            <div class="menuLine"><span>Mai max 700-as széria</span><b>${fmt(Number(d.hetszazasSzeriaMax || 0))}</b></div>
         </div>
 
         <div class="menuCard">
@@ -2790,6 +3073,7 @@ function renderBeallitasok(){
                 Frissítés, újratelepítés vagy telefoncsere előtt mentsd ki az adatokat fájlba.
                 A visszatöltés felülírja a telefonon lévő jelenlegi adatokat.
             </div>
+            <div class="settingNote"><b>Mentés állapota:</b> ${getBackupReminderInfo().text}</div>
             <button class="settingBtn active" onclick="downloadBackup()">
                 💾 Adatok mentése fájlba
             </button>
@@ -2830,10 +3114,22 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.1</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.2</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.2 - Teljesítmény és célkövető csomag</div>
+            <div>- Nap közbeni célkövető hozzáadva a főképernyőre</div>
+            <div>- A következő súly mérföldkő és a hátralévő kg látható</div>
+            <div>- Rejtett módban a pontos szám továbbra sem látszik</div>
+            <div>- Napi teljesítmény értékelés hozzáadva</div>
+            <div>- Rekordok bővítve a 700-as sorozatokkal</div>
+            <div>- Havi összesítő másolása megmaradt és használható</div>
+            <div>- Biztonsági mentés emlékeztető hozzáadva</div>
+            <div>- Backup fájl továbbra is minden fontos adatot ment</div>
+        </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">V2.1 - Havi archiválás javítás</div>
@@ -3048,7 +3344,7 @@ function getBackupPayload(){
 
     return {
         app:"Súlyvadász",
-        backupVersion:"2.0",
+        backupVersion:"2.2",
         exportedAt:new Date().toISOString(),
         exportedAtLocal:new Date().toLocaleString("hu-HU"),
         data:data,
@@ -3059,13 +3355,17 @@ function getBackupPayload(){
             hiddenMode:hiddenMode,
             kartonMod:kartonMod,
             quoteDate:localStorage.getItem("quoteDate") || "",
-            quoteText:localStorage.getItem("quoteText") || ""
+            quoteText:localStorage.getItem("quoteText") || "",
+            lastBackupAt:localStorage.getItem("lastBackupAt") || "",
+            lastBackupAtLocal:localStorage.getItem("lastBackupAtLocal") || ""
         }
     };
 }
 
 function downloadBackup(){
     try{
+        localStorage.setItem("lastBackupAt", new Date().toISOString());
+        localStorage.setItem("lastBackupAtLocal", new Date().toLocaleString("hu-HU"));
         const payload = getBackupPayload();
         const json = JSON.stringify(payload, null, 2);
         const blob = new Blob([json], {type:"application/json"});
@@ -3081,6 +3381,8 @@ function downloadBackup(){
         setTimeout(function(){
             URL.revokeObjectURL(url);
             a.remove();
+            renderBackupReminderBox();
+            refreshActiveMenu();
         }, 500);
     }
     catch(e){
@@ -3173,6 +3475,26 @@ function importBackupFromFile(input){
             }
             else{
                 localStorage.removeItem("quoteText");
+            }
+
+            if(restoredSettings.lastBackupAt){
+                localStorage.setItem("lastBackupAt", restoredSettings.lastBackupAt);
+            }
+            else if(backup.exportedAt){
+                localStorage.setItem("lastBackupAt", backup.exportedAt);
+            }
+            else{
+                localStorage.removeItem("lastBackupAt");
+            }
+
+            if(restoredSettings.lastBackupAtLocal){
+                localStorage.setItem("lastBackupAtLocal", restoredSettings.lastBackupAtLocal);
+            }
+            else if(backup.exportedAtLocal){
+                localStorage.setItem("lastBackupAtLocal", backup.exportedAtLocal);
+            }
+            else{
+                localStorage.removeItem("lastBackupAtLocal");
             }
 
             updateHiddenModeUI();
@@ -3300,6 +3622,8 @@ function deleteAllData(){
     localStorage.removeItem("closedPickings");
     localStorage.removeItem("vacationDays");
     localStorage.removeItem("monthlyArchives");
+    localStorage.removeItem("lastBackupAt");
+    localStorage.removeItem("lastBackupAtLocal");
 
     data = {};
     closedPickings = [];
