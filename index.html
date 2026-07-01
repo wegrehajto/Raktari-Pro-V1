@@ -755,6 +755,68 @@ button:active{
         font-size:13px;
     }
 }
+
+
+/* ONLINE VERSENY */
+.onlineStatusPill{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    background:#334155;
+    color:#e2e8f0;
+}
+.onlineStatusPill.ok{
+    background:#14532d;
+    color:#bbf7d0;
+}
+.onlineStatusPill.warn{
+    background:#713f12;
+    color:#fde68a;
+}
+.onlineStatusPill.bad{
+    background:#7f1d1d;
+    color:#fecaca;
+}
+.onlineBoardItem{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.18);
+    border-radius:14px;
+    padding:11px;
+    margin-top:8px;
+}
+.onlineRankLine{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.onlineRank{
+    font-size:18px;
+    font-weight:950;
+    color:#22c55e;
+    min-width:34px;
+}
+.onlineName{
+    flex:1;
+    font-weight:900;
+}
+.onlineMeta{
+    font-size:12px;
+    opacity:.74;
+    margin-top:5px;
+}
+.onlineGrid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+}
+.onlineGrid .settingBtn{
+    margin-top:0;
+}
+
 </style>
 </head>
 
@@ -763,7 +825,7 @@ button:active{
 <div class="header">
     <div class="brandBlock">
         <div class="appName">⚖️ Súlyvadász</div>
-        <div class="appSub">Statisztika · rekordok · célkövető</div>
+        <div class="appSub">Statisztika · rekordok · célkövető · online verseny</div>
     </div>
     <button class="menuBtn" onclick="openMenu()">☰ Menü</button>
 </div>
@@ -819,7 +881,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.2 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.3 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -838,6 +900,10 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 
             <button class="menuTab" data-tab="atlagok" onclick="showMenuTab('atlagok')">
                 Átlagok
+            </button>
+
+            <button class="menuTab" data-tab="online" onclick="showMenuTab('online')">
+                Online
             </button>
 
             <button class="menuTab" data-tab="beallitasok" onclick="showMenuTab('beallitasok')">
@@ -864,6 +930,13 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 let kartonMod = localStorage.getItem("kartonMod") === "1";
 let hiddenMode = localStorage.getItem("hiddenMode") === "1";
 
+// Supabase online verseny mód.
+// Csak a publishable kulcs van itt. Secret/service_role kulcsot tilos index.html-be tenni.
+const SUPABASE_URL_RAW = "https://dxbioidgrgktggtvyeqc.supabase.co/rest/v1/";
+const SUPABASE_REST_URL = SUPABASE_URL_RAW.replace(/\/+$/, "").replace(/\/rest\/v1$/, "") + "/rest/v1";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_qi_D5d8T8CHZowfcukpzmQ_0ecDiDye";
+let onlineSyncTimer = null;
+
 function getTodayKey(){
     const d = new Date();
     const y = d.getFullYear();
@@ -889,6 +962,7 @@ let data = loadJson("data", {});
 let closedPickings = loadJson("closedPickings", []);
 let vacationDays = loadJson("vacationDays", []);
 let monthlyArchives = loadJson("monthlyArchives", []);
+let onlineUser = loadJson("onlineUser", null);
 
 if(!data || typeof data !== "object" || Array.isArray(data)){
     data = {};
@@ -904,6 +978,10 @@ if(!Array.isArray(vacationDays)){
 
 if(!Array.isArray(monthlyArchives)){
     monthlyArchives = [];
+}
+
+if(!onlineUser || typeof onlineUser !== "object" || !onlineUser.user_id){
+    onlineUser = null;
 }
 
 function createEmptyDay(){
@@ -979,6 +1057,17 @@ function saveVacationDays(){
 
 function saveMonthlyArchives(){
     localStorage.setItem("monthlyArchives", JSON.stringify(monthlyArchives));
+}
+
+function saveOnlineUser(user){
+    onlineUser = user && user.user_id ? user : null;
+
+    if(onlineUser){
+        localStorage.setItem("onlineUser", JSON.stringify(onlineUser));
+    }
+    else{
+        localStorage.removeItem("onlineUser");
+    }
 }
 
 function fmt(n){
@@ -1592,6 +1681,7 @@ function undoLastInput(){
     saveData();
     render();
     refreshActiveMenu();
+    scheduleOnlineLiveUpdate();
 }
 
 function add(){
@@ -1689,6 +1779,7 @@ function add(){
     sInput.value = "";
 
     render();
+    scheduleOnlineLiveUpdate();
 
     setTimeout(function(){
         tInput.focus();
@@ -1759,7 +1850,7 @@ function render(){
     renderBackupReminderBox();
 }
 
-function closePicking(){
+async function closePicking(){
     ensureTodayData();
 
     const d = data[today];
@@ -1770,6 +1861,9 @@ function closePicking(){
     }
 
     if(!confirm("Biztosan le akarod zárni a szedést?")) return;
+
+    const onlineOk = await handleOnlineSubmitBeforeClose(d);
+    if(!onlineOk) return;
 
     const now = new Date();
 
@@ -1910,6 +2004,11 @@ function showMenuTab(tab){
 
     if(tab === "atlagok"){
         box.innerHTML = renderAtlagok();
+    }
+
+    if(tab === "online"){
+        box.innerHTML = renderOnlineVerseny();
+        setTimeout(function(){ refreshOnlineBoards(); }, 50);
     }
 
     if(tab === "beallitasok"){
@@ -3023,6 +3122,389 @@ function renderAtlagok(){
     `;
 }
 
+
+function getOnlineUserName(){
+    return onlineUser && onlineUser.name ? onlineUser.name : "";
+}
+
+function setOnlineMessage(text, type){
+    const box = document.getElementById("onlineMessage");
+    if(!box) return;
+
+    box.innerHTML = text ? `<div class="settingNote"><span class="onlineStatusPill ${type || ""}">${text}</span></div>` : "";
+}
+
+async function supabaseRpc(fn, payload){
+    const res = await fetch(SUPABASE_REST_URL + "/rpc/" + fn, {
+        method:"POST",
+        headers:{
+            "apikey":SUPABASE_PUBLISHABLE_KEY,
+            "Authorization":"Bearer " + SUPABASE_PUBLISHABLE_KEY,
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify(payload || {})
+    });
+
+    let data = null;
+    const text = await res.text();
+
+    try{
+        data = text ? JSON.parse(text) : null;
+    }
+    catch(e){
+        data = text;
+    }
+
+    if(!res.ok){
+        const msg = data && data.message ? data.message : (typeof data === "string" ? data : "Online hiba.");
+        throw new Error(msg);
+    }
+
+    return data;
+}
+
+function getCurrentOnlinePayload(){
+    ensureTodayData();
+    const d = data[today];
+
+    return {
+        p_user_id: onlineUser ? onlineUser.user_id : null,
+        p_work_date: today,
+        p_tetel: Number(d.tetel || 0),
+        p_suly: Number(d.suly || 0),
+        p_karton: Number(d.karton || 0),
+        p_osszegyseg: getDayOsszegyseg(d),
+        p_seven_hundreds: Number(d.hetszazas || 0),
+        p_best_700_streak: Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0)
+    };
+}
+
+function scheduleOnlineLiveUpdate(){
+    if(!onlineUser || !onlineUser.user_id) return;
+
+    clearTimeout(onlineSyncTimer);
+    onlineSyncTimer = setTimeout(function(){
+        updateOnlineLive(true);
+    }, 900);
+}
+
+async function updateOnlineLive(silent){
+    if(!onlineUser || !onlineUser.user_id) return false;
+
+    try{
+        const result = await supabaseRpc("sv_update_live", getCurrentOnlinePayload());
+
+        if(result && result.ok === false){
+            throw new Error(result.error || "Az online élő állás frissítése nem sikerült.");
+        }
+
+        localStorage.setItem("lastOnlineSyncAt", new Date().toISOString());
+        localStorage.removeItem("lastOnlineSyncError");
+
+        if(!silent){
+            setOnlineMessage("Élő állás frissítve", "ok");
+            refreshOnlineBoards();
+        }
+
+        return true;
+    }
+    catch(e){
+        localStorage.setItem("lastOnlineSyncError", e.message || "Online hiba");
+
+        if(!silent){
+            setOnlineMessage("Online hiba: " + (e.message || "nem sikerült frissíteni"), "bad");
+        }
+
+        return false;
+    }
+}
+
+async function registerOnlineUser(){
+    const nameEl = document.getElementById("onlineName");
+    const pinEl = document.getElementById("onlinePin");
+    const name = nameEl ? nameEl.value.trim() : "";
+    const pin = pinEl ? pinEl.value.trim() : "";
+
+    if(name.length < 2){
+        setOnlineMessage("Adj meg legalább 2 karakteres nevet.", "bad");
+        return;
+    }
+
+    if(!/^\d{4,8}$/.test(pin)){
+        setOnlineMessage("A PIN 4-8 számjegy legyen.", "bad");
+        return;
+    }
+
+    try{
+        setOnlineMessage("Regisztráció folyamatban...", "warn");
+        const result = await supabaseRpc("sv_register", {p_name:name, p_pin:pin});
+
+        if(!result || result.ok === false){
+            throw new Error(result && result.error ? result.error : "Regisztráció sikertelen.");
+        }
+
+        saveOnlineUser({user_id:result.user_id, name:result.name});
+        if(pinEl) pinEl.value = "";
+        setOnlineMessage("Online felhasználó beállítva: " + result.name, "ok");
+        refreshActiveMenu();
+        scheduleOnlineLiveUpdate();
+    }
+    catch(e){
+        setOnlineMessage(e.message || "Regisztráció sikertelen.", "bad");
+    }
+}
+
+async function loginOnlineUser(){
+    const nameEl = document.getElementById("onlineName");
+    const pinEl = document.getElementById("onlinePin");
+    const name = nameEl ? nameEl.value.trim() : "";
+    const pin = pinEl ? pinEl.value.trim() : "";
+
+    if(name.length < 2){
+        setOnlineMessage("Add meg a neved.", "bad");
+        return;
+    }
+
+    if(!/^\d{4,8}$/.test(pin)){
+        setOnlineMessage("A PIN 4-8 számjegy legyen.", "bad");
+        return;
+    }
+
+    try{
+        setOnlineMessage("Belépés folyamatban...", "warn");
+        const result = await supabaseRpc("sv_login", {p_name:name, p_pin:pin});
+
+        if(!result || result.ok === false){
+            throw new Error(result && result.error ? result.error : "Belépés sikertelen.");
+        }
+
+        saveOnlineUser({user_id:result.user_id, name:result.name});
+        if(pinEl) pinEl.value = "";
+        setOnlineMessage("Belépve: " + result.name, "ok");
+        refreshActiveMenu();
+        scheduleOnlineLiveUpdate();
+    }
+    catch(e){
+        setOnlineMessage(e.message || "Belépés sikertelen.", "bad");
+    }
+}
+
+function logoutOnlineUser(){
+    if(!onlineUser){
+        return;
+    }
+
+    if(!confirm("Biztosan törlöd az online felhasználót erről a telefonról?\n\nA helyi statisztika nem törlődik.")){
+        return;
+    }
+
+    saveOnlineUser(null);
+    localStorage.removeItem("lastOnlineSyncAt");
+    localStorage.removeItem("lastOnlineSyncError");
+    refreshActiveMenu();
+}
+
+async function handleOnlineSubmitBeforeClose(dayData){
+    if(!onlineUser || !onlineUser.user_id){
+        return true;
+    }
+
+    const pin = prompt(
+        "Online verseny mód aktív.\n\n" +
+        "Napzáráshoz add meg a PIN-kódod:\n" +
+        onlineUser.name
+    );
+
+    if(pin === null){
+        alert("Napzárás megszakítva.");
+        return false;
+    }
+
+    if(!/^\d{4,8}$/.test(pin.trim())){
+        alert("A PIN 4-8 számjegy legyen.");
+        return false;
+    }
+
+    try{
+        const result = await supabaseRpc("sv_submit_day", {
+            p_user_id:onlineUser.user_id,
+            p_pin:pin.trim(),
+            p_work_date:today,
+            p_tetel:Number(dayData.tetel || 0),
+            p_suly:Number(dayData.suly || 0),
+            p_karton:Number(dayData.karton || 0),
+            p_osszegyseg:getDayOsszegyseg(dayData),
+            p_seven_hundreds:Number(dayData.hetszazas || 0),
+            p_best_700_streak:Number(dayData.hetszazasSzeriaMax || dayData.hetszazasSzeria || 0)
+        });
+
+        if(!result || result.ok === false){
+            throw new Error(result && result.error ? result.error : "Online beküldés sikertelen.");
+        }
+
+        localStorage.setItem("lastOnlineSyncAt", new Date().toISOString());
+        localStorage.removeItem("lastOnlineSyncError");
+        return true;
+    }
+    catch(e){
+        alert(
+            "Online beküldés nem sikerült, ezért a napzárás nem történt meg.\n\n" +
+            "Hiba: " + (e.message || "ismeretlen hiba") + "\n\n" +
+            "Ellenőrizd a netet vagy a PIN-t, és próbáld újra."
+        );
+        return false;
+    }
+}
+
+function renderOnlineRows(rows, type){
+    if(!Array.isArray(rows) || rows.length === 0){
+        return `<div class="empty">Még nincs online adat.</div>`;
+    }
+
+    return rows.map(function(r){
+        const rank = Number(r.helyezes || 0);
+        const name = r.name || "Ismeretlen";
+        const visible = r.numbers_visible !== false;
+
+        let meta = "";
+
+        if(type === "live" && !visible){
+            meta = "Számok délig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
+        }
+        else if(type === "monthly"){
+            meta = fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
+        }
+        else{
+            meta = fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
+        }
+
+        return `
+            <div class="onlineBoardItem">
+                <div class="onlineRankLine">
+                    <div class="onlineRank">${rank}.</div>
+                    <div class="onlineName">${escapeHtml(name)}</div>
+                </div>
+                <div class="onlineMeta">${meta}</div>
+            </div>
+        `;
+    }).join("");
+}
+
+function formatOnlineTime(value){
+    if(!value) return "ismeretlen";
+
+    try{
+        return new Date(value).toLocaleTimeString("hu-HU", {hour:"2-digit", minute:"2-digit"});
+    }
+    catch(e){
+        return "ismeretlen";
+    }
+}
+
+function escapeHtml(str){
+    return String(str || "").replace(/[&<>'"]/g, function(ch){
+        return {
+            "&":"&amp;",
+            "<":"&lt;",
+            ">":"&gt;",
+            "'":"&#39;",
+            '"':"&quot;"
+        }[ch];
+    });
+}
+
+async function refreshOnlineBoards(){
+    const liveBox = document.getElementById("onlineLiveBoard");
+    const finalBox = document.getElementById("onlineFinalBoard");
+    const monthBox = document.getElementById("onlineMonthBoard");
+
+    if(liveBox) liveBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
+    if(finalBox) finalBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
+    if(monthBox) monthBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
+
+    try{
+        const currentMonth = today.slice(0,7);
+        const live = await supabaseRpc("sv_get_live_leaderboard", {p_work_date:today});
+        const final = await supabaseRpc("sv_get_daily_final_leaderboard", {p_work_date:today});
+        const monthly = await supabaseRpc("sv_get_monthly_leaderboard", {p_month:currentMonth});
+
+        if(liveBox) liveBox.innerHTML = renderOnlineRows(live, "live");
+        if(finalBox) finalBox.innerHTML = renderOnlineRows(final, "final");
+        if(monthBox) monthBox.innerHTML = renderOnlineRows(monthly, "monthly");
+    }
+    catch(e){
+        const msg = `<div class="empty">Online ranglista nem elérhető.<br>${escapeHtml(e.message || "")}</div>`;
+        if(liveBox) liveBox.innerHTML = msg;
+        if(finalBox) finalBox.innerHTML = msg;
+        if(monthBox) monthBox.innerHTML = msg;
+    }
+}
+
+function getOnlineSyncText(){
+    const err = localStorage.getItem("lastOnlineSyncError") || "";
+    const at = localStorage.getItem("lastOnlineSyncAt") || "";
+
+    if(err){
+        return `<span class="onlineStatusPill bad">Utolsó online hiba</span><div class="settingNote">${escapeHtml(err)}</div>`;
+    }
+
+    if(at){
+        return `<span class="onlineStatusPill ok">Utolsó frissítés: ${formatOnlineTime(at)}</span>`;
+    }
+
+    return `<span class="onlineStatusPill warn">Még nincs online frissítés</span>`;
+}
+
+function renderOnlineVerseny(){
+    const nameValue = getOnlineUserName();
+
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">🌐 Online verseny mód</div>
+            <div class="settingNote">
+                A verseny tétel alapján megy. Napközben az élő állás frissül, délig csak a helyezés látszik, déltől a számok is.
+                Fizetés nem kerül feltöltésre.
+            </div>
+            <div class="menuLine"><span>Online felhasználó</span><b>${onlineUser ? escapeHtml(onlineUser.name) : "Nincs beállítva"}</b></div>
+            <div>${getOnlineSyncText()}</div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">👤 Regisztráció / belépés</div>
+            <div class="settingNote">
+                Első alkalommal regisztrálj nevet és PIN-t. Ha már van neved, ugyanitt tudsz belépni másik telefonon is.
+                A PIN-t az app nem menti el, napzáráskor újra kéri.
+            </div>
+            <input id="onlineName" class="settingInput" type="text" placeholder="Név" value="${escapeHtml(nameValue)}">
+            <input id="onlinePin" class="settingInput" type="password" inputmode="numeric" placeholder="PIN, 4-8 számjegy">
+            <div id="onlineMessage"></div>
+            <div class="onlineGrid">
+                <button class="settingBtn active" onclick="registerOnlineUser()">Regisztráció</button>
+                <button class="settingBtn" onclick="loginOnlineUser()">Belépés</button>
+            </div>
+            ${onlineUser ? `<button class="settingBtn" style="margin-top:8px;" onclick="logoutOnlineUser()">Felhasználó törlése erről a telefonról</button>` : ""}
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📡 Élő állás</div>
+            <div class="settingNote">Délig csak a sorrend látszik, déltől a tétel és a többi adat is.</div>
+            <button class="settingBtn active" onclick="refreshOnlineBoards()">🔄 Ranglisták frissítése</button>
+            <div id="onlineLiveBoard" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🏁 Mai lezárt eredmények</div>
+            <div id="onlineFinalBoard"></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📅 Havi ranglista</div>
+            <div class="settingNote">Aktuális hónap, tétel alapján rendezve.</div>
+            <div id="onlineMonthBoard"></div>
+        </div>
+    `;
+}
+
 function renderBeallitasok(){
     const vacationList = getVacationDays();
     const vacationListHtml = vacationList.length ? vacationList.map(function(v){
@@ -3114,10 +3596,21 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.2</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.3</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.3 - Online verseny mód alap</div>
+            <div>- Supabase online kapcsolat hozzáadva</div>
+            <div>- Szabad név + PIN regisztráció</div>
+            <div>- Élő állás napközben, tétel alapján</div>
+            <div>- Délig csak helyezés látszik, déltől a számok is</div>
+            <div>- Napzáráskor PIN-kódot kér és végleges eredményt küld</div>
+            <div>- Napi és havi online ranglista hozzáadva</div>
+            <div>- Fizetés továbbra sem kerül feltöltésre</div>
+        </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">V2.2 - Teljesítmény és célkövető csomag</div>
@@ -3344,13 +3837,14 @@ function getBackupPayload(){
 
     return {
         app:"Súlyvadász",
-        backupVersion:"2.2",
+        backupVersion:"2.3",
         exportedAt:new Date().toISOString(),
         exportedAtLocal:new Date().toLocaleString("hu-HU"),
         data:data,
         closedPickings:closedPickings,
         vacationDays:vacationDays,
         monthlyArchives:monthlyArchives,
+        onlineUser:onlineUser,
         settings:{
             hiddenMode:hiddenMode,
             kartonMod:kartonMod,
@@ -3416,6 +3910,7 @@ function importBackupFromFile(input){
             const restoredClosed = backup.closedPickings || (backup.keys ? backup.keys.closedPickings : null);
             const restoredVacation = backup.vacationDays || (backup.keys ? backup.keys.vacationDays : []);
             const restoredArchives = backup.monthlyArchives || (backup.keys ? backup.keys.monthlyArchives : []);
+            const restoredOnlineUser = backup.onlineUser || null;
             const restoredSettings = backup.settings || {};
 
             if(!restoredData || typeof restoredData !== "object" || Array.isArray(restoredData)){
@@ -3449,6 +3944,7 @@ function importBackupFromFile(input){
             closedPickings = restoredClosed;
             vacationDays = restoredVacation || [];
             monthlyArchives = restoredArchives || [];
+            onlineUser = restoredOnlineUser && restoredOnlineUser.user_id ? restoredOnlineUser : null;
             hiddenMode = !!restoredSettings.hiddenMode;
             kartonMod = !!restoredSettings.kartonMod;
 
@@ -3462,6 +3958,7 @@ function importBackupFromFile(input){
 
             localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
             localStorage.setItem("kartonMod", kartonMod ? "1" : "0");
+            saveOnlineUser(onlineUser);
 
             if(restoredSettings.quoteDate){
                 localStorage.setItem("quoteDate", restoredSettings.quoteDate);
@@ -3603,7 +4100,8 @@ function deleteAllData(){
         "- a napi adatokat\n" +
         "- az átlagokat\n" +
         "- a tesztadatokat\n" +
-        "- a szabadság napokat\n\n" +
+        "- a szabadság napokat\n" +
+        "- az online felhasználói beállítást erről a telefonról\n\n" +
         "Ezt nem lehet visszavonni."
     );
 
@@ -3624,11 +4122,15 @@ function deleteAllData(){
     localStorage.removeItem("monthlyArchives");
     localStorage.removeItem("lastBackupAt");
     localStorage.removeItem("lastBackupAtLocal");
+    localStorage.removeItem("onlineUser");
+    localStorage.removeItem("lastOnlineSyncAt");
+    localStorage.removeItem("lastOnlineSyncError");
 
     data = {};
     closedPickings = [];
     vacationDays = [];
     monthlyArchives = [];
+    onlineUser = null;
 
     today = getTodayKey();
     data[today] = createEmptyDay();
