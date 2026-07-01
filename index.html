@@ -2341,18 +2341,112 @@ function copyMonthSummary(monthKey){
     }
 }
 
+function getArchivableMonthKeys(){
+    const keys = {};
+
+    function addMonth(value){
+        const monthKey = String(value || "").slice(0,7);
+        if(/^\d{4}-\d{2}$/.test(monthKey)){
+            keys[monthKey] = true;
+        }
+    }
+
+    getDayStats().forEach(function(d){
+        addMonth(d.datum);
+    });
+
+    getVacationDays().forEach(function(v){
+        addMonth(v.datum);
+    });
+
+    if(Array.isArray(monthlyArchives)){
+        monthlyArchives.forEach(function(a){
+            addMonth(a.honap);
+        });
+    }
+
+    // Az aktuális hónap mindig választható, hogy hónap végén gyorsan menthető legyen.
+    addMonth(today);
+
+    return Object.keys(keys).sort(function(a,b){
+        return b.localeCompare(a);
+    });
+}
+
+function renderArchiveMonthOptions(){
+    const months = getArchivableMonthKeys();
+
+    return months.map(function(monthKey){
+        const archived = Array.isArray(monthlyArchives) && monthlyArchives.some(function(a){
+            return a.honap === monthKey;
+        });
+        const current = monthKey === today.slice(0,7);
+
+        let label = getMonthLabel(monthKey);
+        if(current){
+            label += " - aktuális";
+        }
+        label += archived ? " - archiválva" : " - nincs archiválva";
+
+        return `<option value="${monthKey}">${label}</option>`;
+    }).join("");
+}
+
+function getSelectedArchiveMonth(){
+    const select = document.getElementById("archiveMonthSelect");
+    const value = select && select.value ? select.value : today.slice(0,7);
+
+    if(/^\d{4}-\d{2}$/.test(value)){
+        return value;
+    }
+
+    return today.slice(0,7);
+}
+
+function archiveSelectedMonth(){
+    archiveMonth(getSelectedArchiveMonth());
+}
+
 function archiveCurrentMonth(){
-    const monthKey = today.slice(0,7);
+    // Régi gombnév kompatibilitás miatt meghagyva.
+    archiveMonth(today.slice(0,7));
+}
+
+function archiveMonth(monthKey){
+    if(!/^\d{4}-\d{2}$/.test(String(monthKey || ""))){
+        alert("Hibás hónap választás.");
+        return;
+    }
+
     const summary = getMonthSummaryData(monthKey);
     const existing = monthlyArchives.find(function(a){ return a.honap === monthKey; });
+    const isCurrentMonth = monthKey === today.slice(0,7);
 
     const active = data[today] || createEmptyDay();
-    const activeHasData = hasAnyDayData(active);
+    const activeHasData = isCurrentMonth && hasAnyDayData(active);
+    const hasSavedData =
+        Number(summary.napok || 0) > 0 ||
+        Number(summary.szabadsag || 0) > 0 ||
+        Number(summary.suly || 0) > 0 ||
+        Number(summary.tetel || 0) > 0 ||
+        Number(summary.osszegyseg || 0) > 0 ||
+        Number(summary.osszesFizetes || 0) > 0;
+
+    if(!hasSavedData){
+        let noDataMsg = "Ehhez a hónaphoz még nincs lezárt munkanap vagy szabadság:\n\n" + summary.label;
+        if(activeHasData){
+            noDataMsg += "\n\nA mai nyitott adat még nincs lezárva, ezért nincs benne az archívumban. Előbb zárd le a napot.";
+        }
+        alert(noDataMsg);
+        return;
+    }
 
     let msg = "Biztosan archiválod ezt a hónapot?\n\n" + getMonthSummaryText(monthKey);
+
     if(activeHasData){
         msg += "\n\nFigyelem: a mai nyitott, még le nem zárt adat nincs benne az archívumban. Előbb zárd le a napot, ha azt is menteni akarod.";
     }
+
     if(existing){
         msg += "\n\nEhhez a hónaphoz már van archívum. Az új archívum felülírja a régit.";
     }
@@ -2360,9 +2454,11 @@ function archiveCurrentMonth(){
     if(!confirm(msg)) return;
 
     const archive = {
-        id:Date.now(),
-        createdAt:new Date().toISOString(),
-        createdAtLocal:new Date().toLocaleString("hu-HU"),
+        id: existing && existing.id ? existing.id : Date.now(),
+        createdAt: existing && existing.createdAt ? existing.createdAt : new Date().toISOString(),
+        createdAtLocal: existing && existing.createdAtLocal ? existing.createdAtLocal : new Date().toLocaleString("hu-HU"),
+        updatedAt:new Date().toISOString(),
+        updatedAtLocal:new Date().toLocaleString("hu-HU"),
         honap:monthKey,
         label:summary.label,
         summary:summary
@@ -2373,7 +2469,7 @@ function archiveCurrentMonth(){
     monthlyArchives.sort(function(a,b){ return String(b.honap).localeCompare(String(a.honap)); });
     saveMonthlyArchives();
     refreshActiveMenu();
-    alert("Havi archívum mentve.");
+    alert("Havi archívum mentve: " + summary.label);
 }
 
 function deleteMonthlyArchive(id){
@@ -2708,10 +2804,14 @@ function renderBeallitasok(){
         <div class="menuCard archiveCard">
             <div class="menuCardTitle">📦 Havi archiválás</div>
             <div class="settingNote">
-                Hónap végén készíthetsz egy külön havi pillanatképet. Ez a biztonsági mentésbe is bekerül, így visszatöltés után is megmarad.
+                Válaszd ki, melyik hónapot akarod archiválni. Így az előző hónapot is el tudod menteni akkor is, ha már új hónap van.
+                Ha a hónap már archiválva volt, az új mentés frissíti a meglévő archívumot.
             </div>
-            <button class="settingBtn active" onclick="archiveCurrentMonth()">
-                📦 Aktuális hónap archiválása
+            <select id="archiveMonthSelect" class="settingInput">
+                ${renderArchiveMonthOptions()}
+            </select>
+            <button class="settingBtn active" onclick="archiveSelectedMonth()">
+                📦 Kiválasztott hónap archiválása
             </button>
             <div style="margin-top:10px;">${renderMonthlyArchivesList()}</div>
         </div>
@@ -2730,8 +2830,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.0</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.1</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.1 - Havi archiválás javítás</div>
+            <div>- Archiválásnál már kiválasztható bármelyik hónap, amelyhez van adat</div>
+            <div>- Előző hónap is archiválható akkor is, ha már új hónap van</div>
+            <div>- A már archivált hónap frissíthető, nem készül felesleges duplikált archívum</div>
+            <div>- Üres hónap archiválását az app nem engedi</div>
+            <div>- A biztonsági mentés továbbra is tartalmazza a havi archívumokat</div>
         </div>
 
         <div class="menuCard">
