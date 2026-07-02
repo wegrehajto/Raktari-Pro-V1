@@ -990,7 +990,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.6 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.7 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -3541,10 +3541,10 @@ function renderOnlineRows(rows, type){
             meta = "Számok délig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
         }
         else if(type === "monthly"){
-            meta = "Pont: " + fmt(getMonthlyScore(r)) + " (tétel+súly) · " + fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
+            meta = "Egység: " + fmt(getMonthlyScore(r)) + " (tétel+súly) · " + fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
         }
         else{
-            meta = fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
+            meta = "Egység: " + fmt(Number(r.tetel || 0) + Number(r.suly || 0)) + " (tétel+súly) · " + fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
         }
 
         return `
@@ -3903,7 +3903,7 @@ function renderAdminLiveRows(rows){
                     <div>${closed}</div>
                 </div>
                 <div class="onlineMeta">
-                    ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · frissítve: ${formatOnlineTime(r.updated_at)}
+                    Egység: ${fmt(Number(r.tetel || 0) + Number(r.suly || 0))} (tétel+súly) · ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · frissítve: ${formatOnlineTime(r.updated_at)}
                 </div>
                 <div class="adminUserActions">
                     <button class="adminMiniBtn danger" data-action="delete-live" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Mai élő törlése</button>
@@ -3925,7 +3925,7 @@ function renderAdminDailyRows(rows){
                     <div class="onlineName ${getRankClass(r.helyezes)}">${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
                 </div>
                 <div class="onlineMeta">
-                    ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · beküldve: ${formatOnlineTime(r.submitted_at)}
+                    Egység: ${fmt(Number(r.tetel || 0) + Number(r.suly || 0))} (tétel+súly) · ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · beküldve: ${formatOnlineTime(r.submitted_at)}
                 </div>
                 <div class="adminUserActions">
                     <button class="adminMiniBtn danger" data-action="delete-final" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Lezárt nap törlése</button>
@@ -3947,7 +3947,7 @@ function renderAdminMonthlyRows(rows){
                     <div class="onlineName ${getRankClass(r.helyezes)}">${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
                 </div>
                 <div class="onlineMeta">
-                    Pont: ${fmt(getMonthlyScore(r))} (tétel+súly) · ${fmt(r.total_tetel)} tétel · ${fmt(r.total_suly)} kg · ${fmt(r.days_count)} nap · ~egység: ${fmt(r.total_osszegyseg)} · 700-as: ${fmt(r.total_seven_hundreds)} · max széria: ${fmt(r.best_700_streak)}
+                    Egység: ${fmt(getMonthlyScore(r))} (tétel+súly) · ${fmt(r.total_tetel)} tétel · ${fmt(r.total_suly)} kg · ${fmt(r.days_count)} nap · ~egység: ${fmt(r.total_osszegyseg)} · 700-as: ${fmt(r.total_seven_hundreds)} · max széria: ${fmt(r.best_700_streak)}
                 </div>
             </div>
         `;
@@ -4158,8 +4158,15 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.6</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.7</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.7 - Ranglista egység alap</div>
+            <div>
+                A napi élő ranglista is tétel+súly alapján rendez. A havi és admin ranglistákban a „pont” megnevezés helyett „egység” látszik.
+            </div>
         </div>
 
         <div class="menuCard">
