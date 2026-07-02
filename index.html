@@ -816,6 +816,115 @@ button:active{
 .onlineGrid .settingBtn{
     margin-top:0;
 }
+.onlineTopActions{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+    margin-top:10px;
+}
+.onlineCurrentUser{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:8px;
+}
+.adminBadge{
+    display:inline-block;
+    margin-left:6px;
+    padding:2px 7px;
+    border-radius:999px;
+    font-size:10px;
+    font-weight:950;
+    background:#7c2d12;
+    color:#fed7aa;
+    vertical-align:middle;
+}
+.medalGold{
+    color:#facc15;
+    text-shadow:0 0 12px rgba(250,204,21,.16);
+}
+.medalSilver{
+    color:#cbd5e1;
+    text-shadow:0 0 12px rgba(203,213,225,.14);
+}
+.medalBronze{
+    color:#fb923c;
+    text-shadow:0 0 12px rgba(251,146,60,.14);
+}
+.onlineCompactNote{
+    font-size:12px;
+    color:#94a3b8;
+    line-height:1.35;
+    margin-top:6px;
+}
+
+
+/* ADMIN */
+.adminSummaryGrid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+}
+.adminSummaryBox{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.18);
+    border-radius:14px;
+    padding:10px;
+}
+.adminSummaryBox .label{
+    font-size:11px;
+    opacity:.72;
+    font-weight:850;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+}
+.adminSummaryBox .value{
+    margin-top:3px;
+    font-size:19px;
+    font-weight:950;
+}
+.adminUserActions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+    margin-top:9px;
+}
+.adminMiniBtn{
+    border:0;
+    border-radius:12px;
+    padding:9px 8px;
+    background:#334155;
+    color:#e5e7eb;
+    font-weight:900;
+    font-size:12px;
+}
+.adminMiniBtn.danger{
+    background:#7f1d1d;
+    color:#fecaca;
+}
+.adminMiniBtn.good{
+    background:#14532d;
+    color:#bbf7d0;
+}
+.adminRowMuted{
+    opacity:.62;
+}
+.adminSelectLine{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+}
+@media(max-width:420px){
+    .adminSummaryGrid,
+    .adminUserActions,
+    .adminSelectLine{
+        grid-template-columns:1fr;
+    }
+}
 
 </style>
 </head>
@@ -825,7 +934,7 @@ button:active{
 <div class="header">
     <div class="brandBlock">
         <div class="appName">⚖️ Súlyvadász</div>
-        <div class="appSub">Statisztika · rekordok · célkövető · online verseny</div>
+        <div class="appSub">Statisztika · rekordok · online verseny · admin</div>
     </div>
     <button class="menuBtn" onclick="openMenu()">☰ Menü</button>
 </div>
@@ -881,7 +990,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.3 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.6 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -906,12 +1015,12 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
                 Online
             </button>
 
-            <button class="menuTab" data-tab="beallitasok" onclick="showMenuTab('beallitasok')">
-                Beállítások
+            <button class="menuTab" data-tab="admin" onclick="showMenuTab('admin')">
+                Admin
             </button>
 
-            <button class="menuTab" data-tab="changelog" onclick="showMenuTab('changelog')">
-                Changelog
+            <button class="menuTab" data-tab="beallitasok" onclick="showMenuTab('beallitasok')">
+                Beállítások
             </button>
         </div>
 
@@ -963,6 +1072,9 @@ let closedPickings = loadJson("closedPickings", []);
 let vacationDays = loadJson("vacationDays", []);
 let monthlyArchives = loadJson("monthlyArchives", []);
 let onlineUser = loadJson("onlineUser", null);
+let adminSession = loadJson("adminSession", null);
+let onlineUiNotice = "";
+let onlineUiNoticeType = "";
 
 if(!data || typeof data !== "object" || Array.isArray(data)){
     data = {};
@@ -982,6 +1094,10 @@ if(!Array.isArray(monthlyArchives)){
 
 if(!onlineUser || typeof onlineUser !== "object" || !onlineUser.user_id){
     onlineUser = null;
+}
+
+if(!adminSession || typeof adminSession !== "object" || !adminSession.token){
+    adminSession = null;
 }
 
 function createEmptyDay(){
@@ -2008,7 +2124,14 @@ function showMenuTab(tab){
 
     if(tab === "online"){
         box.innerHTML = renderOnlineVerseny();
-        setTimeout(function(){ refreshOnlineBoards(); }, 50);
+        if(onlineUser && onlineUser.user_id){
+            setTimeout(function(){ refreshOnlineBoards(); }, 50);
+        }
+    }
+
+    if(tab === "admin"){
+        box.innerHTML = renderAdminMenu();
+        setTimeout(function(){ refreshAdminDashboard(false); }, 50);
     }
 
     if(tab === "beallitasok"){
@@ -2016,9 +2139,6 @@ function showMenuTab(tab){
         updateKartonModeUI();
     }
 
-    if(tab === "changelog"){
-        box.innerHTML = renderChangelog();
-    }
 
     const dangerZone = document.getElementById("dangerZone");
 
@@ -3245,8 +3365,10 @@ async function registerOnlineUser(){
 
         saveOnlineUser({user_id:result.user_id, name:result.name});
         if(pinEl) pinEl.value = "";
-        setOnlineMessage("Online felhasználó beállítva: " + result.name, "ok");
+        onlineUiNotice = "Sikeres regisztráció. Belépve: " + result.name;
+        onlineUiNoticeType = "ok";
         refreshActiveMenu();
+        setTimeout(function(){ setOnlineMessage(onlineUiNotice, onlineUiNoticeType); }, 80);
         scheduleOnlineLiveUpdate();
     }
     catch(e){
@@ -3280,8 +3402,10 @@ async function loginOnlineUser(){
 
         saveOnlineUser({user_id:result.user_id, name:result.name});
         if(pinEl) pinEl.value = "";
-        setOnlineMessage("Belépve: " + result.name, "ok");
+        onlineUiNotice = "Sikeres belépés: " + result.name;
+        onlineUiNoticeType = "ok";
         refreshActiveMenu();
+        setTimeout(function(){ setOnlineMessage(onlineUiNotice, onlineUiNoticeType); }, 80);
         scheduleOnlineLiveUpdate();
     }
     catch(e){
@@ -3301,7 +3425,10 @@ function logoutOnlineUser(){
     saveOnlineUser(null);
     localStorage.removeItem("lastOnlineSyncAt");
     localStorage.removeItem("lastOnlineSyncError");
+    onlineUiNotice = "Online felhasználó törölve erről a telefonról.";
+    onlineUiNoticeType = "warn";
     refreshActiveMenu();
+    setTimeout(function(){ setOnlineMessage(onlineUiNotice, onlineUiNoticeType); }, 80);
 }
 
 async function handleOnlineSubmitBeforeClose(dayData){
@@ -3356,6 +3483,46 @@ async function handleOnlineSubmitBeforeClose(dayData){
     }
 }
 
+const ADMIN_BADGE_NAMES = ["balázs", "balazs", "horváth balázs", "horvath balazs"];
+
+function normalizeNameForCompare(name){
+    return String(name || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+}
+
+function isPublicAdminName(name){
+    const normalized = normalizeNameForCompare(name);
+    return ADMIN_BADGE_NAMES.some(function(adminName){
+        return normalizeNameForCompare(adminName) === normalized;
+    });
+}
+
+function isAdminRow(r){
+    return Boolean(r && (r.is_admin === true || r.is_admin === "true" || isPublicAdminName(r.name)));
+}
+
+function renderNameWithAdminBadge(name, isAdmin){
+    return escapeHtml(name || "Ismeretlen") + (isAdmin ? ` <span class="adminBadge">ADMIN</span>` : "");
+}
+
+function getRankClass(rank){
+    if(Number(rank) === 1) return "medalGold";
+    if(Number(rank) === 2) return "medalSilver";
+    if(Number(rank) === 3) return "medalBronze";
+    return "";
+}
+
+function getMonthlyScore(r){
+    if(r && r.total_score !== undefined && r.total_score !== null){
+        return Number(r.total_score || 0);
+    }
+
+    return Number((r && r.total_tetel) || 0) + Number((r && r.total_suly) || 0);
+}
+
 function renderOnlineRows(rows, type){
     if(!Array.isArray(rows) || rows.length === 0){
         return `<div class="empty">Még nincs online adat.</div>`;
@@ -3365,6 +3532,8 @@ function renderOnlineRows(rows, type){
         const rank = Number(r.helyezes || 0);
         const name = r.name || "Ismeretlen";
         const visible = r.numbers_visible !== false;
+        const medalClass = getRankClass(rank);
+        const adminMark = isAdminRow(r);
 
         let meta = "";
 
@@ -3372,7 +3541,7 @@ function renderOnlineRows(rows, type){
             meta = "Számok délig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
         }
         else if(type === "monthly"){
-            meta = fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
+            meta = "Pont: " + fmt(getMonthlyScore(r)) + " (tétel+súly) · " + fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
         }
         else{
             meta = fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
@@ -3381,8 +3550,8 @@ function renderOnlineRows(rows, type){
         return `
             <div class="onlineBoardItem">
                 <div class="onlineRankLine">
-                    <div class="onlineRank">${rank}.</div>
-                    <div class="onlineName">${escapeHtml(name)}</div>
+                    <div class="onlineRank ${medalClass}">${rank}.</div>
+                    <div class="onlineName ${medalClass}">${renderNameWithAdminBadge(name, adminMark)}</div>
                 </div>
                 <div class="onlineMeta">${meta}</div>
             </div>
@@ -3415,27 +3584,29 @@ function escapeHtml(str){
 
 async function refreshOnlineBoards(){
     const liveBox = document.getElementById("onlineLiveBoard");
-    const finalBox = document.getElementById("onlineFinalBoard");
     const monthBox = document.getElementById("onlineMonthBoard");
 
+    if(!onlineUser || !onlineUser.user_id){
+        const msg = `<div class="empty">Az élő ranglista megtekintéséhez online belépés szükséges.</div>`;
+        if(liveBox) liveBox.innerHTML = msg;
+        if(monthBox) monthBox.innerHTML = msg;
+        return;
+    }
+
     if(liveBox) liveBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
-    if(finalBox) finalBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
     if(monthBox) monthBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
 
     try{
         const currentMonth = today.slice(0,7);
         const live = await supabaseRpc("sv_get_live_leaderboard", {p_work_date:today});
-        const final = await supabaseRpc("sv_get_daily_final_leaderboard", {p_work_date:today});
         const monthly = await supabaseRpc("sv_get_monthly_leaderboard", {p_month:currentMonth});
 
         if(liveBox) liveBox.innerHTML = renderOnlineRows(live, "live");
-        if(finalBox) finalBox.innerHTML = renderOnlineRows(final, "final");
         if(monthBox) monthBox.innerHTML = renderOnlineRows(monthly, "monthly");
     }
     catch(e){
         const msg = `<div class="empty">Online ranglista nem elérhető.<br>${escapeHtml(e.message || "")}</div>`;
         if(liveBox) liveBox.innerHTML = msg;
-        if(finalBox) finalBox.innerHTML = msg;
         if(monthBox) monthBox.innerHTML = msg;
     }
 }
@@ -3455,54 +3626,445 @@ function getOnlineSyncText(){
     return `<span class="onlineStatusPill warn">Még nincs online frissítés</span>`;
 }
 
-function renderOnlineVerseny(){
+function renderOnlineAuthCard(){
     const nameValue = getOnlineUserName();
+    const notice = onlineUiNotice ? `<div class="settingNote"><span class="onlineStatusPill ${onlineUiNoticeType || ""}">${escapeHtml(onlineUiNotice)}</span></div>` : "";
 
     return `
         <div class="menuCard">
-            <div class="menuCardTitle">🌐 Online verseny mód</div>
-            <div class="settingNote">
-                A verseny tétel alapján megy. Napközben az élő állás frissül, délig csak a helyezés látszik, déltől a számok is.
-                Fizetés nem kerül feltöltésre.
-            </div>
-            <div class="menuLine"><span>Online felhasználó</span><b>${onlineUser ? escapeHtml(onlineUser.name) : "Nincs beállítva"}</b></div>
-            <div>${getOnlineSyncText()}</div>
-        </div>
-
-        <div class="menuCard">
             <div class="menuCardTitle">👤 Regisztráció / belépés</div>
-            <div class="settingNote">
-                Első alkalommal regisztrálj nevet és PIN-t. Ha már van neved, ugyanitt tudsz belépni másik telefonon is.
-                A PIN-t az app nem menti el, napzáráskor újra kéri.
-            </div>
             <input id="onlineName" class="settingInput" type="text" placeholder="Név" value="${escapeHtml(nameValue)}">
             <input id="onlinePin" class="settingInput" type="password" inputmode="numeric" placeholder="PIN, 4-8 számjegy">
-            <div id="onlineMessage"></div>
+            <div id="onlineMessage">${notice}</div>
             <div class="onlineGrid">
                 <button class="settingBtn active" onclick="registerOnlineUser()">Regisztráció</button>
                 <button class="settingBtn" onclick="loginOnlineUser()">Belépés</button>
             </div>
             ${onlineUser ? `<button class="settingBtn" style="margin-top:8px;" onclick="logoutOnlineUser()">Felhasználó törlése erről a telefonról</button>` : ""}
         </div>
+    `;
+}
 
+function renderOnlineVerseny(){
+    const shownUser = onlineUser ? renderNameWithAdminBadge(onlineUser.name, isAdminRow(onlineUser)) : "Nincs beállítva";
+
+    if(!onlineUser || !onlineUser.user_id){
+        return `
+            <div class="menuCard">
+                <div class="menuCardTitle">📡 Online ranglista</div>
+                <div class="empty">Az élő ranglista csak online belépés után látható.</div>
+            </div>
+            ${renderOnlineAuthCard()}
+        `;
+    }
+
+    return `
         <div class="menuCard">
             <div class="menuCardTitle">📡 Élő állás</div>
-            <div class="settingNote">Délig csak a sorrend látszik, déltől a tétel és a többi adat is.</div>
-            <button class="settingBtn active" onclick="refreshOnlineBoards()">🔄 Ranglisták frissítése</button>
+            <div class="onlineCurrentUser">
+                <span class="onlineStatusPill">Online: ${shownUser}</span>
+                ${getOnlineSyncText()}
+            </div>
+            <div id="onlineTopMessage">${onlineUiNotice ? `<div class="settingNote"><span class="onlineStatusPill ${onlineUiNoticeType || ""}">${escapeHtml(onlineUiNotice)}</span></div>` : ""}</div>
+            <div class="onlineCompactNote">
+                Délig csak a sorrend látszik, déltől a számok is. A fizetés nem kerül feltöltésre.
+            </div>
+            <div class="onlineTopActions">
+                <button class="settingBtn active" onclick="refreshOnlineBoards()">🔄 Ranglisták frissítése</button>
+            </div>
             <div id="onlineLiveBoard" style="margin-top:10px;"></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">🏁 Mai lezárt eredmények</div>
-            <div id="onlineFinalBoard"></div>
+            <div class="menuCardTitle">📅 Havi ranglista</div>
+            <div class="settingNote">Aktuális hónap, tétel + súly alapján rendezve. Karton és fizetés nem számít bele.</div>
+            <div id="onlineMonthBoard"></div>
+        </div>
+
+        ${renderOnlineAuthCard()}
+    `;
+}
+
+
+function saveAdminSession(session){
+    adminSession = session && session.token ? session : null;
+
+    if(adminSession){
+        localStorage.setItem("adminSession", JSON.stringify(adminSession));
+    }
+    else{
+        localStorage.removeItem("adminSession");
+    }
+}
+
+function getAdminToken(){
+    return adminSession && adminSession.token ? adminSession.token : null;
+}
+
+function getDefaultAdminDate(){
+    const el = document.getElementById("adminDate");
+    return el && el.value ? el.value : getTodayKey();
+}
+
+function getDefaultAdminMonth(){
+    const el = document.getElementById("adminMonth");
+    return el && el.value ? el.value : getTodayKey().slice(0,7);
+}
+
+function setAdminMessage(text, type){
+    const box = document.getElementById("adminMessage");
+    if(!box) return;
+
+    box.innerHTML = text ? `<div class="settingNote"><span class="onlineStatusPill ${type || ""}">${escapeHtml(text)}</span></div>` : "";
+}
+
+function renderAdminMenu(){
+    if(!adminSession || !adminSession.token){
+        return `
+            <div class="menuCard">
+                <div class="menuCardTitle">🛡️ Admin belépés</div>
+                <input id="adminName" class="settingInput" type="text" placeholder="Admin felhasználó">
+                <input id="adminPin" class="settingInput" type="password" inputmode="numeric" placeholder="Admin PIN">
+                <div id="adminMessage"></div>
+                <button class="settingBtn active" onclick="adminLogin()">Belépés adminba</button>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">🛡️ Admin panel</div>
+            <div class="menuLine"><span>Belépve</span><b>${escapeHtml(adminSession.username || "Admin")}</b></div>
+            <div class="adminSelectLine">
+                <input id="adminDate" class="settingInput" type="date" value="${getTodayKey()}">
+                <input id="adminMonth" class="settingInput" type="month" value="${getTodayKey().slice(0,7)}">
+            </div>
+            <div class="onlineGrid">
+                <button class="settingBtn active" onclick="refreshAdminDashboard(true)">🔄 Admin adatok frissítése</button>
+                <button class="settingBtn" onclick="adminLogout()">Kilépés adminból</button>
+            </div>
+            <div id="adminMessage"></div>
+        </div>
+
+        <div id="adminDashboard">
+            <div class="empty">Admin adatok betöltése...</div>
+        </div>
+
+        <div class="adminOnlyChangelog">
+            ${renderChangelog()}
+        </div>
+    `;
+}
+
+
+async function adminLogin(){
+    const nameEl = document.getElementById("adminName");
+    const pinEl = document.getElementById("adminPin");
+    const username = nameEl ? nameEl.value.trim() : "";
+    const pin = pinEl ? pinEl.value.trim() : "";
+
+    if(username.length < 2){
+        setAdminMessage("Add meg az admin felhasználót.", "bad");
+        return;
+    }
+
+    if(!/^\d{4,8}$/.test(pin)){
+        setAdminMessage("Az admin PIN 4-8 számjegy legyen.", "bad");
+        return;
+    }
+
+    try{
+        setAdminMessage("Admin belépés folyamatban...", "warn");
+        const result = await supabaseRpc("sv_admin_login", {p_username:username, p_pin:pin});
+
+        if(!result || result.ok === false){
+            throw new Error(result && result.error ? result.error : "Admin belépés sikertelen.");
+        }
+
+        saveAdminSession({token:result.token, username:result.username, expires_at:result.expires_at});
+        if(pinEl) pinEl.value = "";
+        refreshActiveMenu();
+    }
+    catch(e){
+        setAdminMessage(e.message || "Admin belépés sikertelen.", "bad");
+    }
+}
+
+async function adminLogout(){
+    const token = getAdminToken();
+
+    try{
+        if(token){
+            await supabaseRpc("sv_admin_logout", {p_token:token});
+        }
+    }
+    catch(e){}
+
+    saveAdminSession(null);
+    refreshActiveMenu();
+}
+
+async function refreshAdminDashboard(showMsg){
+    const box = document.getElementById("adminDashboard");
+    if(!box || !adminSession || !adminSession.token) return;
+
+    box.innerHTML = `<div class="empty">Admin adatok betöltése...</div>`;
+
+    try{
+        const result = await supabaseRpc("sv_admin_get_dashboard", {
+            p_token:getAdminToken(),
+            p_work_date:getDefaultAdminDate(),
+            p_month:getDefaultAdminMonth()
+        });
+
+        if(!result || result.ok === false){
+            throw new Error(result && result.error ? result.error : "Admin adatok nem elérhetők.");
+        }
+
+        box.innerHTML = renderAdminDashboard(result);
+        if(showMsg) setAdminMessage("Admin adatok frissítve.", "ok");
+    }
+    catch(e){
+        const msg = e.message || "Admin adatok nem elérhetők.";
+        box.innerHTML = `<div class="empty">Admin panel hiba:<br>${escapeHtml(msg)}</div>`;
+        setAdminMessage(msg, "bad");
+
+        if(String(msg).toLowerCase().includes("lejárt") || String(msg).toLowerCase().includes("érvénytelen")){
+            saveAdminSession(null);
+        }
+    }
+}
+
+async function adminRpcChecked(fn, payload, fallbackMessage){
+    const result = await supabaseRpc(fn, payload);
+
+    if(result && result.ok === false){
+        throw new Error(result.error || fallbackMessage || "Admin művelet nem sikerült.");
+    }
+
+    return result;
+}
+
+function renderAdminDashboard(result){
+    const live = Array.isArray(result.live) ? result.live : [];
+    const daily = Array.isArray(result.daily) ? result.daily : [];
+    const monthly = Array.isArray(result.monthly) ? result.monthly : [];
+    const users = Array.isArray(result.users) ? result.users : [];
+    const summary = result.summary || {};
+
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">📊 Admin gyors összesítő</div>
+            <div class="settingNote">Dátum: ${escapeHtml(result.work_date || getDefaultAdminDate())} · Hónap: ${escapeHtml(result.work_month || getDefaultAdminMonth())}</div>
+            <div class="adminSummaryGrid">
+                <div class="adminSummaryBox"><div class="label">Regisztrált user</div><div class="value">${fmt(summary.users_count || users.length)}</div></div>
+                <div class="adminSummaryBox"><div class="label">Aktív user</div><div class="value">${fmt(summary.active_users_count || 0)}</div></div>
+                <div class="adminSummaryBox"><div class="label">Mai élő user</div><div class="value">${fmt(summary.live_count || live.length)}</div></div>
+                <div class="adminSummaryBox"><div class="label">Mai lezárt</div><div class="value">${fmt(summary.closed_count || 0)}</div></div>
+                <div class="adminSummaryBox"><div class="label">Mai össz tétel</div><div class="value">${fmt(summary.live_tetel || 0)}</div></div>
+                <div class="adminSummaryBox"><div class="label">Mai össz súly</div><div class="value">${fmt(summary.live_suly || 0)} kg</div></div>
+            </div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">📅 Havi ranglista</div>
-            <div class="settingNote">Aktuális hónap, tétel alapján rendezve.</div>
-            <div id="onlineMonthBoard"></div>
+            <div class="menuCardTitle">📡 Mai élő állás - admin nézet</div>
+            ${renderAdminLiveRows(live)}
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">🏁 Kiválasztott nap lezárt eredményei</div>
+            ${renderAdminDailyRows(daily)}
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">📅 Havi összesítés - admin nézet</div>
+            <div class="settingNote">Rendezés: tétel + súly alapján.</div>
+            ${renderAdminMonthlyRows(monthly)}
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">👥 Felhasználók kezelése</div>
+            <div class="settingNote">PIN csere, átnevezés, admin jel, tiltás/engedélyezés, teljes törlés.</div>
+            ${renderAdminUsers(users)}
         </div>
     `;
+}
+
+function renderAdminLiveRows(rows){
+    if(!rows.length) return `<div class="empty">Még nincs mai élő adat.</div>`;
+
+    return rows.map(function(r){
+        const closed = r.is_closed ? `<span class="onlineStatusPill ok">lezárva</span>` : `<span class="onlineStatusPill warn">nyitott</span>`;
+        return `
+            <div class="onlineBoardItem ${r.active ? "" : "adminRowMuted"}">
+                <div class="onlineRankLine">
+                    <div class="onlineRank ${getRankClass(r.helyezes)}">${fmt(r.helyezes || 0)}.</div>
+                    <div class="onlineName ${getRankClass(r.helyezes)}">${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
+                    <div>${closed}</div>
+                </div>
+                <div class="onlineMeta">
+                    ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · frissítve: ${formatOnlineTime(r.updated_at)}
+                </div>
+                <div class="adminUserActions">
+                    <button class="adminMiniBtn danger" data-action="delete-live" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Mai élő törlése</button>
+                    <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">PIN csere</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderAdminDailyRows(rows){
+    if(!rows.length) return `<div class="empty">Nincs lezárt eredmény ezen a napon.</div>`;
+
+    return rows.map(function(r){
+        return `
+            <div class="onlineBoardItem">
+                <div class="onlineRankLine">
+                    <div class="onlineRank ${getRankClass(r.helyezes)}">${fmt(r.helyezes || 0)}.</div>
+                    <div class="onlineName ${getRankClass(r.helyezes)}">${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
+                </div>
+                <div class="onlineMeta">
+                    ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · beküldve: ${formatOnlineTime(r.submitted_at)}
+                </div>
+                <div class="adminUserActions">
+                    <button class="adminMiniBtn danger" data-action="delete-final" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Lezárt nap törlése</button>
+                    <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">PIN csere</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderAdminMonthlyRows(rows){
+    if(!rows.length) return `<div class="empty">Ebben a hónapban még nincs lezárt online nap.</div>`;
+
+    return rows.map(function(r){
+        return `
+            <div class="onlineBoardItem">
+                <div class="onlineRankLine">
+                    <div class="onlineRank ${getRankClass(r.helyezes)}">${fmt(r.helyezes || 0)}.</div>
+                    <div class="onlineName ${getRankClass(r.helyezes)}">${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
+                </div>
+                <div class="onlineMeta">
+                    Pont: ${fmt(getMonthlyScore(r))} (tétel+súly) · ${fmt(r.total_tetel)} tétel · ${fmt(r.total_suly)} kg · ${fmt(r.days_count)} nap · ~egység: ${fmt(r.total_osszegyseg)} · 700-as: ${fmt(r.total_seven_hundreds)} · max széria: ${fmt(r.best_700_streak)}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderAdminUsers(rows){
+    if(!rows.length) return `<div class="empty">Még nincs online regisztrált felhasználó.</div>`;
+
+    return rows.map(function(u){
+        const status = u.active ? `<span class="onlineStatusPill ok">aktív</span>` : `<span class="onlineStatusPill bad">tiltva</span>`;
+        return `
+            <div class="onlineBoardItem ${u.active ? "" : "adminRowMuted"}">
+                <div class="onlineRankLine">
+                    <div class="onlineName">${renderNameWithAdminBadge(u.name || "Ismeretlen", isAdminRow(u))}</div>
+                    <div>${status}</div>
+                </div>
+                <div class="onlineMeta">
+                    Regisztrálva: ${formatOnlineDateTime(u.created_at)} · mai tétel: ${fmt(u.today_tetel || 0)} · mai súly: ${fmt(u.today_suly || 0)} kg · lezárva: ${u.today_closed ? "igen" : "nem"}
+                </div>
+                <div class="adminUserActions">
+                    <button class="adminMiniBtn" data-action="rename" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">Átnevezés</button>
+                    <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">PIN csere</button>
+                    <button class="adminMiniBtn ${isAdminRow(u) ? "danger" : "good"}" data-action="${isAdminRow(u) ? "admin-off" : "admin-on"}" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">${isAdminRow(u) ? "Admin jel le" : "Admin jel fel"}</button>
+                    <button class="adminMiniBtn ${u.active ? "danger" : "good"}" data-action="${u.active ? "deactivate" : "activate"}" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">${u.active ? "Tiltás" : "Engedélyezés"}</button>
+                    <button class="adminMiniBtn danger" data-action="delete-user" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">Teljes törlés</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function formatOnlineDateTime(value){
+    if(!value) return "ismeretlen";
+
+    try{
+        return new Date(value).toLocaleString("hu-HU", {month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+    }
+    catch(e){
+        return "ismeretlen";
+    }
+}
+
+async function adminUserAction(btn){
+    if(!btn || !adminSession || !adminSession.token) return;
+
+    const action = btn.dataset.action || "";
+    const userId = btn.dataset.userId || "";
+    const name = btn.dataset.name || "Ismeretlen";
+
+    try{
+        if(action === "reset-pin"){
+            const newPin = prompt("Új PIN ehhez a felhasználóhoz:\n" + name + "\n\n4-8 számjegy:");
+            if(newPin === null) return;
+            if(!/^\d{4,8}$/.test(newPin.trim())){
+                alert("A PIN 4-8 számjegy legyen.");
+                return;
+            }
+            await adminRpcChecked("sv_admin_update_user", {p_token:getAdminToken(), p_user_id:userId, p_name:null, p_pin:newPin.trim(), p_active:null, p_is_admin:null}, "PIN csere nem sikerült.");
+            alert("PIN cserélve: " + name);
+        }
+
+        if(action === "rename"){
+            const newName = prompt("Új név:", name);
+            if(newName === null) return;
+            if(newName.trim().length < 2){
+                alert("A név legalább 2 karakter legyen.");
+                return;
+            }
+            await adminRpcChecked("sv_admin_update_user", {p_token:getAdminToken(), p_user_id:userId, p_name:newName.trim(), p_pin:null, p_active:null, p_is_admin:null}, "Átnevezés nem sikerült.");
+            alert("Felhasználó átnevezve.");
+        }
+
+        if(action === "deactivate" || action === "activate"){
+            const active = action === "activate";
+            if(!confirm((active ? "Engedélyezed" : "Tiltod") + " ezt a felhasználót?\n\n" + name)) return;
+            await adminRpcChecked("sv_admin_update_user", {p_token:getAdminToken(), p_user_id:userId, p_name:null, p_pin:null, p_active:active, p_is_admin:null}, "Felhasználó állapotának módosítása nem sikerült.");
+            alert(active ? "Felhasználó engedélyezve." : "Felhasználó tiltva.");
+        }
+
+        if(action === "admin-on" || action === "admin-off"){
+            const isAdmin = action === "admin-on";
+            if(!confirm((isAdmin ? "Admin jelet adsz" : "Admin jelet leveszel") + " ennél a felhasználónál?\n\n" + name)) return;
+            await adminRpcChecked("sv_admin_update_user", {p_token:getAdminToken(), p_user_id:userId, p_name:null, p_pin:null, p_active:null, p_is_admin:isAdmin}, "Admin jel módosítása nem sikerült.");
+            alert(isAdmin ? "Admin jel bekapcsolva." : "Admin jel levéve.");
+        }
+
+        if(action === "delete-user"){
+            if(!confirm("TELJES TÖRLÉS: " + name + "\n\nEz törli a usert, az élő adatait és minden lezárt eredményét. Biztos?")) return;
+            const code = prompt("A törléshez írd be pontosan: TORLES");
+            if(code !== "TORLES"){
+                alert("Törlés megszakítva.");
+                return;
+            }
+            await adminRpcChecked("sv_admin_delete_user", {p_token:getAdminToken(), p_user_id:userId, p_confirm:"TORLES"}, "Felhasználó törlése nem sikerült.");
+            alert("Felhasználó törölve.");
+        }
+
+        if(action === "delete-live"){
+            const date = getDefaultAdminDate();
+            if(!confirm("Törlöd a mai/kiválasztott napi élő adatot?\n\n" + name + " · " + date)) return;
+            await adminRpcChecked("sv_admin_delete_user_day", {p_token:getAdminToken(), p_user_id:userId, p_work_date:date, p_delete_live:true, p_delete_final:false}, "Élő adat törlése nem sikerült.");
+            alert("Élő adat törölve.");
+        }
+
+        if(action === "delete-final"){
+            const date = getDefaultAdminDate();
+            if(!confirm("Törlöd a lezárt napi eredményt?\n\n" + name + " · " + date)) return;
+            await adminRpcChecked("sv_admin_delete_user_day", {p_token:getAdminToken(), p_user_id:userId, p_work_date:date, p_delete_live:false, p_delete_final:true}, "Lezárt eredmény törlése nem sikerült.");
+            alert("Lezárt eredmény törölve.");
+        }
+
+        refreshAdminDashboard(false);
+    }
+    catch(e){
+        alert("Admin művelet nem sikerült:\n" + (e.message || "ismeretlen hiba"));
+    }
 }
 
 function renderBeallitasok(){
@@ -3596,10 +4158,35 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.3</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.6</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.6 - Online jogosultság és admin tisztítás</div>
+            <div class="settingNote">
+                A Changelog kikerült a nyilvános menüből és az Admin részbe került. Az online ranglista csak belépett online felhasználóknak látszik.
+                Az admin belépő felesleges magyarázó szövegei kikerültek, regisztrációnál pedig külön sikeres visszajelzés jelenik meg.
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.5 - Online nézet tisztítás</div>
+            <div class="settingNote">
+                Az Online menüben az élő állás és a havi ranglista került felülre, a regisztráció/belépés lentebb került.
+                Az első három helyezett arany/ezüst/bronz névszínt kapott, az admin jelvény megjelenik a név mellett, a mai lezárt eredmények blokk kikerült az online nézetből, a havi ranglista pedig tétel+súly alapján rendez.
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.4 - Admin menüpont</div>
+            <div>- Admin menü hozzáadva külön admin felhasználó + PIN belépéssel</div>
+            <div>- Adminból látszik minden online regisztrált felhasználó aktuális élő állása</div>
+            <div>- Látszik a kiválasztott nap lezárt eredménye és az aktuális havi összesítés</div>
+            <div>- Felhasználó átnevezés, PIN csere, tiltás/engedélyezés és teljes törlés hozzáadva</div>
+            <div>- Napi élő adat és lezárt napi eredmény adminból törölhető</div>
+            <div>- Az admin PIN továbbra sem kerül az index.html-be</div>
+        </div>
 
         <div class="menuCard">
             <div class="menuCardTitle">V2.3 - Online verseny mód alap</div>
@@ -4125,12 +4712,14 @@ function deleteAllData(){
     localStorage.removeItem("onlineUser");
     localStorage.removeItem("lastOnlineSyncAt");
     localStorage.removeItem("lastOnlineSyncError");
+    localStorage.removeItem("adminSession");
 
     data = {};
     closedPickings = [];
     vacationDays = [];
     monthlyArchives = [];
     onlineUser = null;
+    adminSession = null;
 
     today = getTodayKey();
     data[today] = createEmptyDay();
