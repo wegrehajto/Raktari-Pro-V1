@@ -464,7 +464,8 @@ button:active{
 .privacyMode #menuContent[data-tab="elozmenyek"] .historyPick div,
 .privacyMode #menuContent[data-tab="atlagok"] .menuLine b,
 .privacyMode #menuContent[data-tab="atlagok"] .historyTotal,
-.privacyMode #menuContent[data-tab="atlagok"] .historySummary .small{
+.privacyMode #menuContent[data-tab="atlagok"] .historySummary .small,
+.privacyMode #menuContent[data-tab="atlagok"] .avgQuickValue{
     filter:blur(7px);
     user-select:none;
 }
@@ -738,6 +739,64 @@ button:active{
 }
 
 
+
+
+/* ÁTLAGOK UI */
+.avgQuickGrid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+}
+.avgQuickBox{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:15px;
+    padding:11px;
+}
+.avgQuickLabel{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:850;
+    text-transform:uppercase;
+    letter-spacing:.45px;
+    line-height:1.25;
+}
+.avgQuickValue{
+    margin-top:4px;
+    font-size:18px;
+    font-weight:950;
+    color:#f8fafc;
+    line-height:1.1;
+}
+.avgQuickValue.goodValue{
+    color:#bbf7d0;
+}
+.avgCompactNote{
+    margin-top:9px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.35;
+    font-weight:750;
+}
+.atlagSectionTitle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:8px;
+}
+.atlagSectionTitle .pill{
+    background:rgba(34,197,94,.12);
+    border:1px solid rgba(34,197,94,.18);
+    color:#bbf7d0;
+    border-radius:999px;
+    padding:4px 8px;
+    font-size:11px;
+    font-weight:950;
+    white-space:nowrap;
+}
+
 @media (max-width:380px){
     body{
         padding:12px;
@@ -990,7 +1049,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.7 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.8 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -3022,17 +3081,24 @@ function renderAtlagok(){
         ` : "";
 
         return `
+            <div class="menuCard">
+                <div class="atlagSectionTitle">
+                    <div class="menuCardTitle">📈 Napi átlagok</div>
+                    <div class="pill">Felül</div>
+                </div>
+                <div class="empty">Még nincs lezárt munkanap, ezért átlagot még nem tud számolni.</div>
+            </div>
+
             <div class="menuCard moneyCard">
                 <div class="menuCardTitle">💰 Várható becsült fizetés</div>
-                <div class="menuLine moneyLine"><span>Mai eddigi várható</span><b>${showFt(maiFizetes)}</b></div>
-                <div class="menuLine"><span>Mai ~összegység</span><b>${showNumber(maiOsszegyseg)}</b></div>
-                <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
-                <div class="moneyHint">A számítás becslés: ~összegység × 1,64 Ft.</div>
+                <div class="avgQuickGrid">
+                    <div class="avgQuickBox"><div class="avgQuickLabel">Mai eddigi</div><div class="avgQuickValue goodValue">${showFt(maiFizetes)}</div></div>
+                    <div class="avgQuickBox"><div class="avgQuickLabel">Mai ~egység</div><div class="avgQuickValue">${showNumber(maiOsszegyseg)}</div></div>
+                </div>
+                <div class="avgCompactNote">A számítás becslés: ~összegység × 1,64 Ft.</div>
             </div>
 
             ${vacationEmptyHtml}
-
-            <div class="empty">Még nincs lezárt adat az átlagokhoz.</div>
         `;
     }
 
@@ -3063,18 +3129,6 @@ function renderAtlagok(){
     const currentMonthWithTodayOsszegyseg = currentMonthClosedOsszegyseg + maiOsszegyseg;
     const currentMonthWorkWithTodayFizetes = getBecsultFizetes(currentMonthWithTodayOsszegyseg);
     const currentMonthWithTodayFizetes = currentMonthWorkWithTodayFizetes + currentMonthVacationFizetes;
-
-    const bestDay = days.reduce(function(best,d){
-        return d.suly > best.suly ? d : best;
-    }, days[0]);
-
-    const worstDay = days.reduce(function(worst,d){
-        return d.suly < worst.suly ? d : worst;
-    }, days[0]);
-
-    const bestFizetesDay = days.reduce(function(best,d){
-        return d.osszegyseg > best.osszegyseg ? d : best;
-    }, days[0]);
 
     const monthKeys = Array.from(new Set(
         months.map(function(m){ return m.honap; }).concat(
@@ -3126,7 +3180,14 @@ function renderAtlagok(){
                 </summary>
 
                 <div class="historyDetails">
-                    <div class="menuCardTitle">Havi összesen</div>
+                    <div class="avgQuickGrid">
+                        <div class="avgQuickBox"><div class="avgQuickLabel">Napi átlag súly</div><div class="avgQuickValue">${fmt(avgSuly)} kg</div></div>
+                        <div class="avgQuickBox"><div class="avgQuickLabel">Napi átlag tétel</div><div class="avgQuickValue">${fmt(avgTetel)}</div></div>
+                        <div class="avgQuickBox"><div class="avgQuickLabel">Átlag ~egység</div><div class="avgQuickValue">${fmt(avgOsszegyseg)}</div></div>
+                        <div class="avgQuickBox"><div class="avgQuickLabel">Átlag várható</div><div class="avgQuickValue goodValue">${showFt(avgFizetes)}</div></div>
+                    </div>
+
+                    <div class="menuCardTitle" style="margin-top:14px;">Havi összesen</div>
                     <div class="menuLine"><span>Lezárt munkanapok</span><b>${fmt(m.napok)}</b></div>
                     <div class="menuLine"><span>Szabadság napok</span><b>${fmt(vacationDaysInMonth)}</b></div>
                     <div class="menuLine"><span>Kiszedett rendelések</span><b>${fmt(m.rendeles)}</b></div>
@@ -3137,17 +3198,11 @@ function renderAtlagok(){
                     <div class="menuLine"><span>Karton</span><b>${fmt(m.karton)}</b></div>
                     <div class="menuLine"><span>Karton az egységben</span><b>~${fmt(m.becsultKarton)}</b></div>
                     <div class="menuLine"><span>~Összegység</span><b>${fmt(m.osszegyseg)}</b></div>
+                    <div class="menuLine"><span>Átlag rendelés / munkanap</span><b>${fmt(avgRendeles)}</b></div>
+                    <div class="menuLine"><span>Átlag karton az egységben / munkanap</span><b>~${fmt(avgBecsultKarton)}</b></div>
                     <div class="menuLine moneyLine"><span>Munkából várható</span><b>${showFt(haviFizetes)}</b></div>
                     <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(vacationPayInMonth)}</b></div>
                     <div class="menuLine moneyLine"><span>Havi összes várható</span><b>${showFt(haviOsszesFizetes)}</b></div>
-
-                    <div class="menuCardTitle" style="margin-top:14px;">Napi átlag ebben a hónapban</div>
-                    <div class="menuLine"><span>Átlag súly / munkanap</span><b>${fmt(avgSuly)} kg</b></div>
-                    <div class="menuLine"><span>Átlag tétel / munkanap</span><b>${fmt(avgTetel)}</b></div>
-                    <div class="menuLine"><span>Átlag rendelés / munkanap</span><b>${fmt(avgRendeles)}</b></div>
-                    <div class="menuLine"><span>Átlag karton az egységben / munkanap</span><b>~${fmt(avgBecsultKarton)}</b></div>
-                    <div class="menuLine"><span>Átlag ~összegység / munkanap</span><b>${fmt(avgOsszegyseg)}</b></div>
-                    <div class="menuLine moneyLine"><span>Átlag várható fizetés / munkanap</span><b>${showFt(avgFizetes)}</b></div>
                 </div>
             </details>
         `;
@@ -3163,25 +3218,43 @@ function renderAtlagok(){
     `;
 
     return `
+        <div class="menuCard">
+            <div class="atlagSectionTitle">
+                <div class="menuCardTitle">📈 Napi átlagok</div>
+                <div class="pill">${fmt(days.length)} napból</div>
+            </div>
+            <div class="avgQuickGrid">
+                <div class="avgQuickBox"><div class="avgQuickLabel">Átlag súly</div><div class="avgQuickValue">${fmt(avgDaySuly)} kg</div></div>
+                <div class="avgQuickBox"><div class="avgQuickLabel">Átlag tétel</div><div class="avgQuickValue">${fmt(avgDayTetel)}</div></div>
+                <div class="avgQuickBox"><div class="avgQuickLabel">Átlag ~egység</div><div class="avgQuickValue">${fmt(avgDayOsszegyseg)}</div></div>
+                <div class="avgQuickBox"><div class="avgQuickLabel">Átlag várható</div><div class="avgQuickValue goodValue">${showFt(avgDayFizetes)}</div></div>
+            </div>
+            <div class="menuLine"><span>Napi átlag rendelés</span><b>${fmt(avgDayRendeles)}</b></div>
+            <div class="menuLine"><span>Napi átlag karton az egységben</span><b>~${fmt(avgDayBecsultKarton)}</b></div>
+        </div>
+
         <div class="menuCard moneyCard">
             <div class="menuCardTitle">💰 Várható becsült fizetés</div>
-            <div class="menuLine moneyLine"><span>Mai eddigi várható</span><b>${showFt(maiFizetes)}</b></div>
-            <div class="menuLine moneyLine"><span>Aktuális havi várható</span><b>${showFt(currentMonthWithTodayFizetes)}</b></div>
+            <div class="avgQuickGrid">
+                <div class="avgQuickBox"><div class="avgQuickLabel">Aktuális hónap</div><div class="avgQuickValue goodValue">${showFt(currentMonthWithTodayFizetes)}</div></div>
+                <div class="avgQuickBox"><div class="avgQuickLabel">Összes várható</div><div class="avgQuickValue goodValue">${showFt(totalFizetesWithVacation)}</div></div>
+            </div>
             <div class="menuLine moneyLine"><span>Munkából lezárt várható</span><b>${showFt(totalFizetes)}</b></div>
             <div class="menuLine moneyLine"><span>Szabadság becsült összesen</span><b>${showFt(totalVacationFizetes)}</b></div>
-            <div class="menuLine moneyLine"><span>Összes várható</span><b>${showFt(totalFizetesWithVacation)}</b></div>
-            <div class="menuLine moneyLine"><span>Napi átlag várható</span><b>${showFt(avgDayFizetes)}</b></div>
             <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
-            <div class="moneyHint">Becslés: ~összegység × 1,64 Ft. Az aktuális havi érték a lezárt napokat, a mai még le nem zárt adatot és a rögzített szabadságokat is beleszámolja.</div>
+            <div class="avgCompactNote">Becslés: ~összegység × 1,64 Ft. Az aktuális hónap a lezárt napokat, a mai még le nem zárt adatot és a rögzített szabadságokat is beleszámolja.</div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">🧭 Mai teljesítmény</div>
-            <div class="evalBadge">${getDailyEvaluation(d).text}</div>
-            <div class="menuLine"><span>Aktuális szint</span><b>${getCurrentSulyLevel(Number(d.suly || 0)).emoji} ${getCurrentSulyLevel(Number(d.suly || 0)).label}</b></div>
-            <div class="menuLine"><span>Mai 700-as széria</span><b>${fmt(Number(d.hetszazasSzeria || 0))}</b></div>
-            <div class="menuLine"><span>Mai max 700-as széria</span><b>${fmt(Number(d.hetszazasSzeriaMax || 0))}</b></div>
+            <div class="menuCardTitle">🗓️ Havi lebontás</div>
+            <div class="small">A hónapok lenyitható kártyák. Felül rögtön a havi napi átlagokat látod, alatta az összesítést.</div>
         </div>
+
+        ${monthlyHtml}
+
+        ${renderRecordsCard(days, months)}
+
+        ${vacationSummaryHtml}
 
         <div class="menuCard">
             <div class="menuCardTitle">📊 Összesített adatok</div>
@@ -3192,52 +3265,6 @@ function renderAtlagok(){
             <div class="menuLine"><span>Össz karton</span><b>${fmt(totalKarton)}</b></div>
             <div class="menuLine"><span>Karton az egységben</span><b>~${fmt(totalBecsultKarton)}</b></div>
             <div class="menuLine"><span>~Összegység</span><b>${fmt(totalOsszegyseg)}</b></div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">📈 Napi átlagok</div>
-            <div class="menuLine"><span>Napi átlag súly</span><b>${fmt(avgDaySuly)} kg</b></div>
-            <div class="menuLine"><span>Napi átlag tétel</span><b>${fmt(avgDayTetel)}</b></div>
-            <div class="menuLine"><span>Napi átlag rendelés</span><b>${fmt(avgDayRendeles)}</b></div>
-            <div class="menuLine"><span>Napi átlag karton az egységben</span><b>~${fmt(avgDayBecsultKarton)}</b></div>
-            <div class="menuLine"><span>Napi átlag ~összegység</span><b>${fmt(avgDayOsszegyseg)}</b></div>
-            <div class="menuLine moneyLine"><span>Napi átlag várható fizetés</span><b>${showFt(avgDayFizetes)}</b></div>
-        </div>
-
-        ${vacationSummaryHtml}
-
-        ${renderMonthClosingCard(currentMonthKey)}
-
-        ${renderRecordsCard(days, months)}
-
-        <div class="menuCard">
-            <div class="menuCardTitle">🗓️ Havi lebontás</div>
-            <div class="small">Hónaponként látod az összesített munkanapokat, a szabadság napokat, az adott hónap napi átlagait és a várható becsült fizetést.</div>
-        </div>
-
-        ${monthlyHtml}
-
-        <div class="menuCard">
-            <div class="menuCardTitle">🏆 Legjobb nap</div>
-            <div class="menuLine"><span>Dátum</span><b class="good">${bestDay.datum}</b></div>
-            <div class="menuLine"><span>Súly alapján</span><b class="good">${fmt(bestDay.suly)} kg</b></div>
-            <div class="menuLine"><span>Kiszedett rendelés</span><b>${fmt(bestDay.rendeles)}</b></div>
-            <div class="menuLine"><span>~Összegység</span><b>${fmt(bestDay.osszegyseg)}</b></div>
-        </div>
-
-        <div class="menuCard moneyCard">
-            <div class="menuCardTitle">💸 Legjobb fizus nap</div>
-            <div class="menuLine"><span>Dátum</span><b class="good">${bestFizetesDay.datum}</b></div>
-            <div class="menuLine"><span>~Összegység</span><b>${fmt(bestFizetesDay.osszegyseg)}</b></div>
-            <div class="menuLine moneyLine"><span>Várható becsült fizetés</span><b>${showFt(getBecsultFizetes(bestFizetesDay.osszegyseg))}</b></div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">🐌 Leggyengébb nap</div>
-            <div class="menuLine"><span>Dátum</span><b class="bad">${worstDay.datum}</b></div>
-            <div class="menuLine"><span>Súly alapján</span><b class="bad">${fmt(worstDay.suly)} kg</b></div>
-            <div class="menuLine"><span>Kiszedett rendelés</span><b>${fmt(worstDay.rendeles)}</b></div>
-            <div class="menuLine"><span>~Összegység</span><b>${fmt(worstDay.osszegyseg)}</b></div>
         </div>
     `;
 }
@@ -4158,8 +4185,15 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.7</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.8</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.8 - Átlagok UI tisztítás</div>
+            <div class="settingNote">
+                Az Átlagok menüpont átláthatóbb lett: a napi átlagok felülre kerültek, a mai teljesítmény és a hónapzáró összesítő kikerült, az összesített adatok lentebb kerültek, a havi bontás pedig kompaktabb lett.
+            </div>
         </div>
 
         <div class="menuCard">
