@@ -34,7 +34,7 @@
 body{
     margin:0 auto;
     padding:14px;
-    padding-bottom:42px;
+    padding-bottom:96px;
     max-width:560px;
     min-height:100vh;
     background:
@@ -50,7 +50,7 @@ body{
     padding:14px;
     border-radius:20px;
     display:flex;
-    justify-content:space-between;
+    justify-content:flex-start;
     align-items:center;
     gap:12px;
     margin-bottom:12px;
@@ -77,16 +77,6 @@ body{
     letter-spacing:.2px;
 }
 
-.menuBtn{
-    width:auto;
-    padding:10px 13px;
-    font-size:14px;
-    border-radius:14px;
-    background:#0b1220;
-    color:var(--text);
-    border:1px solid rgba(148,163,184,.18);
-    box-shadow:0 8px 16px rgba(0,0,0,.18);
-}
 
 .card{
     background:linear-gradient(180deg, var(--card), #1b2535);
@@ -290,54 +280,6 @@ button:active{
     padding:14px;
     box-sizing:border-box;
     box-shadow:0 20px 60px rgba(0,0,0,.45);
-}
-
-.menuHeader{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:10px;
-    margin-bottom:12px;
-}
-
-.menuTitle{
-    font-size:23px;
-    font-weight:950;
-    letter-spacing:-.3px;
-}
-
-.menuClose{
-    width:auto;
-    padding:10px 14px;
-    background:#1e293b;
-    color:white;
-    font-size:16px;
-    border:1px solid rgba(148,163,184,.16);
-}
-
-.menuTabs{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin-bottom:12px;
-    position:sticky;
-    top:0;
-    z-index:2;
-    background:linear-gradient(180deg, #0f172a 0%, rgba(15,23,42,.92) 100%);
-    padding-bottom:8px;
-}
-
-.menuTab{
-    padding:12px 8px;
-    font-size:14px;
-    background:#1e293b;
-    color:#dbeafe;
-    border:1px solid rgba(148,163,184,.13);
-}
-
-.menuTab.active{
-    background:linear-gradient(135deg, #22c55e, #16a34a);
-    color:#031407;
 }
 
 .menuCard{
@@ -797,9 +739,278 @@ button:active{
     white-space:nowrap;
 }
 
+
+/* PRO UI V2.13 */
+.todayDashboard{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:12px;
+}
+.dashCard{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(145deg, rgba(30,41,59,.96), rgba(15,23,42,.96));
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:18px;
+    padding:12px;
+    min-height:70px;
+    box-shadow:0 12px 26px rgba(0,0,0,.20);
+}
+.dashCard::after{
+    content:"";
+    position:absolute;
+    right:-24px;
+    top:-24px;
+    width:70px;
+    height:70px;
+    border-radius:999px;
+    background:rgba(34,197,94,.09);
+}
+.dashIcon{
+    font-size:18px;
+    margin-bottom:7px;
+}
+.dashLabel{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.55px;
+}
+.dashValue{
+    margin-top:4px;
+    color:#fff;
+    font-size:21px;
+    line-height:1.05;
+    font-weight:950;
+    letter-spacing:-.35px;
+}
+.dashCard.primary{
+    background:linear-gradient(145deg, rgba(20,83,45,.95), rgba(15,23,42,.98));
+    border-color:rgba(34,197,94,.24);
+}
+.dashCard.primary .dashValue{ color:#bbf7d0; }
+.proSectionLabel{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin:4px 2px 8px;
+    color:#cbd5e1;
+    font-size:12px;
+    font-weight:950;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+}
+.proTinyPill{
+    background:rgba(148,163,184,.12);
+    border:1px solid rgba(148,163,184,.16);
+    color:#cbd5e1;
+    border-radius:999px;
+    padding:4px 8px;
+    font-size:11px;
+    font-weight:950;
+    white-space:nowrap;
+}
+.bottomNav{
+    position:fixed;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:12px;
+    width:calc(100% - 24px);
+    max-width:560px;
+    z-index:2500;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:6px;
+    padding:8px;
+    box-sizing:border-box;
+    border-radius:24px;
+    background:rgba(15,23,42,.92);
+    border:1px solid rgba(148,163,184,.18);
+    box-shadow:0 18px 44px rgba(0,0,0,.45);
+    backdrop-filter:blur(14px);
+}
+.bottomNavBtn{
+    min-width:0;
+    padding:8px 4px 7px;
+    border-radius:17px;
+    background:transparent;
+    color:#94a3b8;
+    border:1px solid transparent;
+    box-shadow:none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    font-size:16px;
+}
+.bottomNavBtn span{
+    line-height:1;
+}
+.bottomNavBtn small{
+    font-size:10px;
+    font-weight:950;
+    line-height:1;
+    white-space:nowrap;
+}
+.bottomNavBtn.active{
+    background:linear-gradient(135deg, rgba(34,197,94,.22), rgba(34,197,94,.08));
+    color:#bbf7d0;
+    border-color:rgba(34,197,94,.24);
+}
+.menuPanel{
+    padding-bottom:88px;
+}
+.proCardHeader{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+    margin-bottom:9px;
+}
+.proCardTitle{
+    font-size:18px;
+    font-weight:950;
+    letter-spacing:-.25px;
+}
+.proCardSub{
+    margin-top:3px;
+    font-size:12px;
+    color:var(--muted);
+    font-weight:750;
+    line-height:1.35;
+}
+.podiumGrid{
+    display:grid;
+    grid-template-columns:1fr 1.12fr 1fr;
+    gap:8px;
+    align-items:end;
+    margin:10px 0 10px;
+}
+.podiumCard{
+    background:linear-gradient(180deg, #111827, #0f172a);
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:18px;
+    padding:11px 9px;
+    text-align:center;
+    min-height:112px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    box-shadow:0 10px 24px rgba(0,0,0,.20);
+}
+.podiumCard.rank1{
+    min-height:132px;
+    border-color:rgba(250,204,21,.35);
+    box-shadow:0 12px 28px rgba(250,204,21,.08), 0 10px 24px rgba(0,0,0,.22);
+}
+.podiumEmoji{
+    font-size:24px;
+    margin-bottom:3px;
+}
+.podiumName{
+    font-size:14px;
+    font-weight:950;
+    line-height:1.15;
+    word-break:break-word;
+}
+.podiumScore{
+    margin-top:7px;
+    font-size:12px;
+    color:#cbd5e1;
+    font-weight:900;
+    line-height:1.25;
+}
+.rankList{
+    margin-top:8px;
+}
+.scoreBubble{
+    flex:0 0 auto;
+    background:rgba(34,197,94,.10);
+    border:1px solid rgba(34,197,94,.16);
+    color:#bbf7d0;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:12px;
+    font-weight:950;
+    white-space:nowrap;
+}
+.onlineBoardItem.proRow{
+    border-radius:16px;
+    padding:12px;
+}
+.settingsDetails{
+    background:linear-gradient(180deg, var(--card), #182233);
+    border-radius:18px;
+    padding:0;
+    margin-bottom:10px;
+    border:1px solid rgba(148,163,184,.12);
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
+    overflow:hidden;
+}
+.settingsDetails > summary{
+    list-style:none;
+    cursor:pointer;
+    padding:14px 13px;
+    font-size:16px;
+    font-weight:950;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.settingsDetails > summary::-webkit-details-marker{ display:none; }
+.settingsDetails > summary::after{
+    content:"⌄";
+    color:var(--muted);
+    font-size:18px;
+    transition:.16s ease;
+}
+.settingsDetails[open] > summary::after{
+    transform:rotate(180deg);
+}
+.settingsDetailsBody{
+    padding:0 13px 13px;
+}
+.settingsDetailsBody .menuCard{
+    margin:0;
+    padding:0;
+    background:transparent;
+    border:0;
+    box-shadow:none;
+}
+.quickActionsGrid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+@media(max-width:420px){
+    .podiumGrid{
+        grid-template-columns:1fr;
+    }
+    .podiumCard,
+    .podiumCard.rank1{
+        min-height:auto;
+        text-align:left;
+        flex-direction:row;
+        align-items:center;
+        gap:10px;
+    }
+    .podiumEmoji{ margin-bottom:0; }
+    .podiumScore{ margin-top:2px; }
+}
+@media(max-width:360px){
+    .bottomNavBtn small{ font-size:9px; }
+    .dashValue{ font-size:19px; }
+}
+
 @media (max-width:380px){
     body{
         padding:12px;
+        padding-bottom:96px;
     }
 
     .appName{
@@ -993,22 +1204,15 @@ button:active{
 <div class="header">
     <div class="brandBlock">
         <div class="appName">⚖️ Súlyvadász</div>
-        <div class="appSub">Statisztika · rekordok · online verseny · admin</div>
+        <div class="appSub">Performance Tracker · online verseny</div>
     </div>
-    <button class="menuBtn" onclick="openMenu()">☰ Menü</button>
 </div>
 
 <div id="weightBanner" class="weightBanner">
     0 kg
 </div>
 
-<div id="goalTracker" class="goalTracker"></div>
-
 <div id="backupReminderBox" class="backupReminderBox"></div>
-
-<div id="quoteBox" class="quoteBox">
-    Mai bölcsesség...
-</div>
 
 <button class="privacyBtn" onclick="toggleHiddenMode()" id="privacyBtn">
 🙈 Rejtett mód: KI
@@ -1034,11 +1238,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
     <input id="s" type="tel" inputmode="numeric">
 </div>
 
-<div class="stat">
-    <div class="row">Tétel <span id="st">0</span></div>
-    <div class="row hotRow">700-as <span id="h700">0</span></div>
-    <div class="row totalRow">~Összegység <span id="sum">0</span></div>
-</div>
+<div id="todayDashboard" class="todayDashboard"></div>
 
 <button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
 
@@ -1049,39 +1249,13 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.8 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.13 · All rights reserved.
 </div>
 
 <!-- MENU -->
 <div id="menuOverlay" class="menuOverlay">
     <div class="menuPanel">
 
-        <div class="menuHeader">
-            <div class="menuTitle">☰ Menü</div>
-            <button class="menuClose" onclick="closeMenu()">✕</button>
-        </div>
-
-        <div class="menuTabs">
-            <button class="menuTab active" data-tab="elozmenyek" onclick="showMenuTab('elozmenyek')">
-                Előzmények
-            </button>
-
-            <button class="menuTab" data-tab="atlagok" onclick="showMenuTab('atlagok')">
-                Átlagok
-            </button>
-
-            <button class="menuTab" data-tab="online" onclick="showMenuTab('online')">
-                Online
-            </button>
-
-            <button class="menuTab" data-tab="admin" onclick="showMenuTab('admin')">
-                Admin
-            </button>
-
-            <button class="menuTab" data-tab="beallitasok" onclick="showMenuTab('beallitasok')">
-                Beállítások
-            </button>
-        </div>
 
         <div id="menuContent"></div>
 
@@ -1093,6 +1267,14 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 
     </div>
 </div>
+
+<nav class="bottomNav" aria-label="Alsó navigáció">
+    <button class="bottomNavBtn active" data-nav="szedes" onclick="navigateApp('szedes')"><span>📦</span><small>Szedés</small></button>
+    <button class="bottomNavBtn" data-nav="online" onclick="navigateApp('online')"><span>🏆</span><small>Online</small></button>
+    <button class="bottomNavBtn" data-nav="atlagok" onclick="navigateApp('atlagok')"><span>📊</span><small>Átlagok</small></button>
+    <button class="bottomNavBtn" data-nav="beallitasok" onclick="navigateApp('beallitasok')"><span>⚙️</span><small>Beállítás</small></button>
+    <button class="bottomNavBtn" data-nav="admin" onclick="navigateApp('admin')"><span>🛡️</span><small>Admin</small></button>
+</nav>
 
 <script>
 let kartonMod = localStorage.getItem("kartonMod") === "1";
@@ -1966,6 +2148,8 @@ function render(){
 
     const d = data[today];
 
+    renderTodayDashboard();
+
     const banner = document.getElementById("weightBanner");
 
     if(banner){
@@ -2021,7 +2205,6 @@ function render(){
     if(sumEl) sumEl.innerText = showNumber(getDayOsszegyseg(d));
 
     renderInputHistory();
-    renderGoalTracker();
     renderBackupReminderBox();
 }
 
@@ -2138,8 +2321,58 @@ if(sEl){
     });
 }
 
+function setBottomNavActive(tab){
+    document.querySelectorAll(".bottomNavBtn").forEach(function(btn){
+        btn.classList.toggle("active", btn.dataset.nav === tab);
+    });
+}
+
+function navigateApp(tab){
+    if(tab === "szedes"){
+        closeMenu();
+        setBottomNavActive("szedes");
+        try{ window.scrollTo({top:0, behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
+        return;
+    }
+
+    openMenu(tab);
+}
+
+function renderTodayDashboard(){
+    ensureTodayData();
+
+    const box = document.getElementById("todayDashboard");
+    if(!box) return;
+
+    const d = data[today] || createEmptyDay();
+    const egys = getDayOsszegyseg(d);
+
+    box.innerHTML = `
+        <div class="dashCard primary">
+            <div class="dashIcon">⚖️</div>
+            <div class="dashLabel">Mai súly</div>
+            <div class="dashValue">${showKg(d.suly)}</div>
+        </div>
+        <div class="dashCard">
+            <div class="dashIcon">📦</div>
+            <div class="dashLabel">Mai tétel</div>
+            <div class="dashValue">${showNumber(d.tetel)}</div>
+        </div>
+        <div class="dashCard">
+            <div class="dashIcon">⚡</div>
+            <div class="dashLabel">~Összegység</div>
+            <div class="dashValue">${hiddenMode ? "••••" : fmt(egys)}</div>
+        </div>
+        <div class="dashCard">
+            <div class="dashIcon">🔥</div>
+            <div class="dashLabel">700-as</div>
+            <div class="dashValue">${showNumber(d.hetszazas)}</div>
+        </div>
+    `;
+}
+
 /* MENU */
-function openMenu(){
+function openMenu(startTab){
     const overlay = document.getElementById("menuOverlay");
 
     if(overlay){
@@ -2147,7 +2380,7 @@ function openMenu(){
         document.body.style.overflow = "hidden";
     }
 
-    showMenuTab("elozmenyek");
+    showMenuTab(startTab || "elozmenyek");
 }
 
 function closeMenu(){
@@ -2157,6 +2390,8 @@ function closeMenu(){
         overlay.style.display = "none";
         document.body.style.overflow = "";
     }
+
+    setBottomNavActive("szedes");
 }
 
 function showMenuTab(tab){
@@ -2172,6 +2407,7 @@ function showMenuTab(tab){
     if(!box) return;
 
     box.dataset.tab = tab;
+    setBottomNavActive(tab);
 
     if(tab === "elozmenyek"){
         box.innerHTML = renderElozmenyek();
@@ -3550,40 +3786,95 @@ function getMonthlyScore(r){
     return Number((r && r.total_tetel) || 0) + Number((r && r.total_suly) || 0);
 }
 
+function getOnlineRowScore(r, type){
+    if(type === "monthly") return getMonthlyScore(r);
+    return Number((r && r.tetel) || 0) + Number((r && r.suly) || 0);
+}
+
+function getOnlineMeta(r, type){
+    const visible = r && r.numbers_visible !== false;
+
+    if(type === "live" && !visible){
+        return "Számok délig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
+    }
+
+    if(type === "monthly"){
+        return "Egység: " + fmt(getMonthlyScore(r)) + " (tétel+súly) · " + fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
+    }
+
+    return "Egység: " + fmt(Number(r.tetel || 0) + Number(r.suly || 0)) + " (tétel+súly) · " + fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
+}
+
+function getOnlineShortScore(r, type){
+    if(type === "live" && r && r.numbers_visible === false) return "Rejtve";
+    return fmt(getOnlineRowScore(r, type)) + " egység";
+}
+
+function renderPodiumCard(r, type){
+    const rank = Number(r.helyezes || 0);
+    const medalClass = getRankClass(rank);
+    const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
+    const adminMark = isAdminRow(r);
+
+    return `
+        <div class="podiumCard rank${rank}">
+            <div>
+                <div class="podiumEmoji">${emoji}</div>
+                <div class="podiumName ${medalClass}">${renderNameWithAdminBadge(r.name || "Ismeretlen", adminMark)}</div>
+            </div>
+            <div class="podiumScore">${getOnlineShortScore(r, type)}</div>
+        </div>
+    `;
+}
+
+function renderOnlineListRow(r, type){
+    const rank = Number(r.helyezes || 0);
+    const medalClass = getRankClass(rank);
+    const adminMark = isAdminRow(r);
+    const score = getOnlineShortScore(r, type);
+
+    return `
+        <div class="onlineBoardItem proRow">
+            <div class="onlineRankLine">
+                <div class="onlineRank ${medalClass}">${rank}.</div>
+                <div class="onlineName ${medalClass}">${renderNameWithAdminBadge(r.name || "Ismeretlen", adminMark)}</div>
+                <div class="scoreBubble">${score}</div>
+            </div>
+            <div class="onlineMeta">${getOnlineMeta(r, type)}</div>
+        </div>
+    `;
+}
+
 function renderOnlineRows(rows, type){
     if(!Array.isArray(rows) || rows.length === 0){
         return `<div class="empty">Még nincs online adat.</div>`;
     }
 
-    return rows.map(function(r){
-        const rank = Number(r.helyezes || 0);
-        const name = r.name || "Ismeretlen";
-        const visible = r.numbers_visible !== false;
-        const medalClass = getRankClass(rank);
-        const adminMark = isAdminRow(r);
+    const top = rows.filter(function(r){ return Number(r.helyezes || 0) <= 3; });
+    const rest = rows.filter(function(r){ return Number(r.helyezes || 0) > 3; });
 
-        let meta = "";
+    const rank1 = top.find(function(r){ return Number(r.helyezes || 0) === 1; });
+    const rank2 = top.find(function(r){ return Number(r.helyezes || 0) === 2; });
+    const rank3 = top.find(function(r){ return Number(r.helyezes || 0) === 3; });
+    const podiumOrder = [rank2, rank1, rank3].filter(Boolean);
 
-        if(type === "live" && !visible){
-            meta = "Számok délig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
-        }
-        else if(type === "monthly"){
-            meta = "Egység: " + fmt(getMonthlyScore(r)) + " (tétel+súly) · " + fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
-        }
-        else{
-            meta = "Egység: " + fmt(Number(r.tetel || 0) + Number(r.suly || 0)) + " (tétel+súly) · " + fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
-        }
+    let html = "";
 
-        return `
-            <div class="onlineBoardItem">
-                <div class="onlineRankLine">
-                    <div class="onlineRank ${medalClass}">${rank}.</div>
-                    <div class="onlineName ${medalClass}">${renderNameWithAdminBadge(name, adminMark)}</div>
-                </div>
-                <div class="onlineMeta">${meta}</div>
-            </div>
-        `;
-    }).join("");
+    if(podiumOrder.length){
+        html += `<div class="podiumGrid">${podiumOrder.map(function(r){ return renderPodiumCard(r, type); }).join("")}</div>`;
+    }
+
+    if(rest.length){
+        html += `<div class="rankList">${rest.map(function(r){ return renderOnlineListRow(r, type); }).join("")}</div>`;
+    }
+
+    if(!rest.length && podiumOrder.length < rows.length){
+        const shownIds = podiumOrder.map(function(r){ return String(r.name || "") + String(r.helyezes || ""); });
+        const missing = rows.filter(function(r){ return shownIds.indexOf(String(r.name || "") + String(r.helyezes || "")) === -1; });
+        html += missing.map(function(r){ return renderOnlineListRow(r, type); }).join("");
+    }
+
+    return html;
 }
 
 function formatOnlineTime(value){
@@ -3687,24 +3978,29 @@ function renderOnlineVerseny(){
 
     return `
         <div class="menuCard">
-            <div class="menuCardTitle">📡 Élő állás</div>
+            <div class="proCardHeader">
+                <div>
+                    <div class="proCardTitle">🏆 Élő ranglista</div>
+                    <div class="proCardSub">Mai állás · egység = tétel + súly</div>
+                </div>
+                <button class="settingBtn active" style="width:auto;padding:10px 12px;font-size:13px;" onclick="refreshOnlineBoards()">🔄 Frissítés</button>
+            </div>
             <div class="onlineCurrentUser">
                 <span class="onlineStatusPill">Online: ${shownUser}</span>
                 ${getOnlineSyncText()}
             </div>
             <div id="onlineTopMessage">${onlineUiNotice ? `<div class="settingNote"><span class="onlineStatusPill ${onlineUiNoticeType || ""}">${escapeHtml(onlineUiNotice)}</span></div>` : ""}</div>
-            <div class="onlineCompactNote">
-                Délig csak a sorrend látszik, déltől a számok is. A fizetés nem kerül feltöltésre.
-            </div>
-            <div class="onlineTopActions">
-                <button class="settingBtn active" onclick="refreshOnlineBoards()">🔄 Ranglisták frissítése</button>
-            </div>
             <div id="onlineLiveBoard" style="margin-top:10px;"></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">📅 Havi ranglista</div>
-            <div class="settingNote">Aktuális hónap, tétel + súly alapján rendezve. Karton és fizetés nem számít bele.</div>
+            <div class="proCardHeader">
+                <div>
+                    <div class="proCardTitle">📅 Havi ranglista</div>
+                    <div class="proCardSub">Aktuális hónap · tétel + súly alapján</div>
+                </div>
+                <span class="onlineStatusPill ok">Egység</span>
+            </div>
             <div id="onlineMonthBoard"></div>
         </div>
 
@@ -4110,74 +4406,78 @@ function renderBeallitasok(){
 
     return `
         <div class="menuCard">
-            <div class="menuCardTitle">⚙️ Beállítások</div>
-            <div class="menuLine"><span>Karton mód</span><b id="settingsKartonState">${kartonMod ? "Bekapcsolva" : "Kikapcsolva"}</b></div>
-            <div class="settingNote">
-                Ha bekapcsolod, a főképernyőn megjelenik a Karton mező.
-                Kikapcsolva nem foglal helyet.
-            </div>
-            <button id="settingsKartonBtn" class="settingBtn ${kartonMod ? "active" : ""}" onclick="toggleKartonMod()">
-                ${kartonMod ? "Karton mód: BE" : "Karton mód: KI"}
-            </button>
-        </div>
-
-        <div class="menuCard vacationCard">
-            <div class="menuCardTitle">🌴 Szabadság nap rögzítése</div>
-            <div class="settingNote">
-                A szabadság nem számít bele a súlyba, tételbe vagy 700-as statba.
-                A várható fizetéshez az adott hónap lezárt munkanapjainak napi átlaga alapján adódik hozzá.
-            </div>
-            <input id="vacationDate" class="settingInput" type="date" value="${getTodayKey()}">
-            <button class="settingBtn" onclick="addVacationDay()">
-                🌴 Szabadság nap hozzáadása
-            </button>
-        </div>
-
-        <div class="menuCard vacationCard">
-            <div class="menuCardTitle">🌴 Rögzített szabadságok</div>
-            ${vacationListHtml}
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">💾 Biztonsági mentés</div>
-            <div class="settingNote">
-                Frissítés, újratelepítés vagy telefoncsere előtt mentsd ki az adatokat fájlba.
-                A visszatöltés felülírja a telefonon lévő jelenlegi adatokat.
-            </div>
-            <div class="settingNote"><b>Mentés állapota:</b> ${getBackupReminderInfo().text}</div>
-            <button class="settingBtn active" onclick="downloadBackup()">
-                💾 Adatok mentése fájlba
-            </button>
-            <button class="settingBtn" style="margin-top:8px;" onclick="openBackupImport()">
-                📂 Adatok visszatöltése fájlból
-            </button>
-            <input id="backupFileInput" type="file" accept="application/json,.json" style="display:none" onchange="importBackupFromFile(this)">
-        </div>
-
-
-
-        <div class="menuCard archiveCard">
-            <div class="menuCardTitle">📦 Havi archiválás</div>
-            <div class="settingNote">
-                Válaszd ki, melyik hónapot akarod archiválni. Így az előző hónapot is el tudod menteni akkor is, ha már új hónap van.
-                Ha a hónap már archiválva volt, az új mentés frissíti a meglévő archívumot.
-            </div>
-            <select id="archiveMonthSelect" class="settingInput">
-                ${renderArchiveMonthOptions()}
-            </select>
-            <button class="settingBtn active" onclick="archiveSelectedMonth()">
-                📦 Kiválasztott hónap archiválása
-            </button>
-            <div style="margin-top:10px;">${renderMonthlyArchivesList()}</div>
-        </div>
-
-        <div class="menuCard">
-            <div class="menuCardTitle">🧪 Tesztelés / adatkezelés</div>
-            <div class="settingNote">
-                Teszt lezárást az Előzményekben külön is tudsz törölni.
-                A lenti gomb csak akkor kell, ha mindent teljesen nullázni akarsz.
+            <div class="proCardHeader">
+                <div>
+                    <div class="proCardTitle">⚙️ Beállítások</div>
+                    <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
+                </div>
+                <span class="onlineStatusPill ok">V2.13</span>
             </div>
         </div>
+
+        <details class="settingsDetails" open>
+            <summary>👁️ Megjelenés és működés</summary>
+            <div class="settingsDetailsBody">
+                <div class="menuLine"><span>Karton mód</span><b id="settingsKartonState">${kartonMod ? "Bekapcsolva" : "Kikapcsolva"}</b></div>
+                <div class="settingNote">
+                    Ha bekapcsolod, a főképernyőn megjelenik a Karton mező. Kikapcsolva nem foglal helyet.
+                </div>
+                <button id="settingsKartonBtn" class="settingBtn ${kartonMod ? "active" : ""}" onclick="toggleKartonMod()">
+                    ${kartonMod ? "Karton mód: BE" : "Karton mód: KI"}
+                </button>
+            </div>
+        </details>
+
+        <details class="settingsDetails">
+            <summary>💾 Biztonsági mentés</summary>
+            <div class="settingsDetailsBody">
+                <div class="settingNote">
+                    Frissítés, újratelepítés vagy telefoncsere előtt mentsd ki az adatokat fájlba.
+                    A visszatöltés felülírja a telefonon lévő jelenlegi adatokat.
+                </div>
+                <div class="settingNote"><b>Mentés állapota:</b> ${getBackupReminderInfo().text}</div>
+                <div class="quickActionsGrid">
+                    <button class="settingBtn active" onclick="downloadBackup()">💾 Mentés</button>
+                    <button class="settingBtn" onclick="openBackupImport()">📂 Visszatöltés</button>
+                </div>
+                <input id="backupFileInput" type="file" accept="application/json,.json" style="display:none" onchange="importBackupFromFile(this)">
+            </div>
+        </details>
+
+        <details class="settingsDetails">
+            <summary>🌴 Szabadság</summary>
+            <div class="settingsDetailsBody">
+                <div class="settingNote">
+                    A szabadság nem számít bele a súlyba, tételbe vagy 700-as statba. A várható fizetéshez az adott hónap lezárt munkanapjainak napi átlaga alapján adódik hozzá.
+                </div>
+                <input id="vacationDate" class="settingInput" type="date" value="${getTodayKey()}">
+                <button class="settingBtn" onclick="addVacationDay()">🌴 Szabadság nap hozzáadása</button>
+                <div style="margin-top:10px;">${vacationListHtml}</div>
+            </div>
+        </details>
+
+        <details class="settingsDetails">
+            <summary>📦 Havi archiválás</summary>
+            <div class="settingsDetailsBody">
+                <div class="settingNote">
+                    Válaszd ki, melyik hónapot akarod archiválni. Ha a hónap már archiválva volt, az új mentés frissíti a meglévő archívumot.
+                </div>
+                <select id="archiveMonthSelect" class="settingInput">
+                    ${renderArchiveMonthOptions()}
+                </select>
+                <button class="settingBtn active" onclick="archiveSelectedMonth()">📦 Kiválasztott hónap archiválása</button>
+                <div style="margin-top:10px;">${renderMonthlyArchivesList()}</div>
+            </div>
+        </details>
+
+        <details class="settingsDetails">
+            <summary>🧪 Tesztelés / adatkezelés</summary>
+            <div class="settingsDetailsBody">
+                <div class="settingNote">
+                    Teszt lezárást az Előzményekben külön is tudsz törölni. A teljes törlés külön piros gombként csak ebben a menüben látszik.
+                </div>
+            </div>
+        </details>
     `;
 }
 
@@ -4185,8 +4485,43 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.8</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.13</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.13 - Csak alsó menüsáv</div>
+            <div class="settingNote">
+                A belső felső menü és fülsor kikerült az Online, Átlagok, Beállítások és Admin oldalak tetejéről. A navigáció most csak az alsó fix menüsávból működik.
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.12 - Felső menü eltávolítás</div>
+            <div class="settingNote">
+                A jobb felső Menü gomb kikerült, mert az alsó fix navigáció már átveszi a fő menüpontok kezelését. A fejléc így tisztább és apposabb lett.
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.11 - Főoldal tisztítás</div>
+            <div class="settingNote">
+                A főképernyőről kikerült a célkövető / százalékos kijelzés és a napi idézet. Felül csak a kg banner maradt, utána a biztonsági mentés figyelmeztetés, a rejtett mód, a bevitel és a rövid statisztika.
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.10 - Főképernyő dashboard rendezés</div>
+            <div class="settingNote">
+                A felső dashboard kártyák lekerültek az inputok alá, a régi Tétel / 700-as / ~Összegység ismétlődő stat blokk pedig kikerült a főképernyőről.
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.9 - Profi UI csomag</div>
+            <div class="settingNote">
+                Alsó fix navigáció, főképernyős dashboard kártyák, dobogós online ranglista, kompaktabb online sorok és összecsukható beállítási szekciók kerültek be.
+            </div>
         </div>
 
         <div class="menuCard">
@@ -4625,7 +4960,6 @@ function importBackupFromFile(input){
             updateHiddenModeUI();
             updateKartonModeUI();
             render();
-            showDailyQuote();
             refreshActiveMenu();
 
             input.value = "";
@@ -4785,7 +5119,6 @@ function deleteAllData(){
 updateHiddenModeUI();
 updateKartonModeUI();
 render();
-showDailyQuote();
 
 if("serviceWorker" in navigator){
     navigator.serviceWorker.register("./sw.js");
