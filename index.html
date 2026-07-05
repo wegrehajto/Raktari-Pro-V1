@@ -740,7 +740,7 @@ button:active{
 }
 
 
-/* PRO UI V2.13 */
+/* PRO UI V2.15 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -923,6 +923,13 @@ button:active{
     color:#cbd5e1;
     font-weight:900;
     line-height:1.25;
+}
+.podiumMeta{
+    margin-top:6px;
+    font-size:11px;
+    color:var(--muted);
+    font-weight:750;
+    line-height:1.3;
 }
 .rankList{
     margin-top:8px;
@@ -1249,7 +1256,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.13 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.15 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -3822,7 +3829,10 @@ function renderPodiumCard(r, type){
                 <div class="podiumEmoji">${emoji}</div>
                 <div class="podiumName ${medalClass}">${renderNameWithAdminBadge(r.name || "Ismeretlen", adminMark)}</div>
             </div>
-            <div class="podiumScore">${getOnlineShortScore(r, type)}</div>
+            <div>
+                <div class="podiumScore">${getOnlineShortScore(r, type)}</div>
+                <div class="podiumMeta">${getOnlineMeta(r, type)}</div>
+            </div>
         </div>
     `;
 }
@@ -4229,6 +4239,7 @@ function renderAdminLiveRows(rows){
                     Egység: ${fmt(Number(r.tetel || 0) + Number(r.suly || 0))} (tétel+súly) · ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · frissítve: ${formatOnlineTime(r.updated_at)}
                 </div>
                 <div class="adminUserActions">
+                    ${!r.is_closed ? `<button class="adminMiniBtn good" data-action="close-day" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Nap lezárása</button>` : `<button class="adminMiniBtn" data-action="close-day" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Lezárt nap frissítése</button>`}
                     <button class="adminMiniBtn danger" data-action="delete-live" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Mai élő törlése</button>
                     <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">PIN csere</button>
                 </div>
@@ -4292,6 +4303,7 @@ function renderAdminUsers(rows){
                     Regisztrálva: ${formatOnlineDateTime(u.created_at)} · mai tétel: ${fmt(u.today_tetel || 0)} · mai súly: ${fmt(u.today_suly || 0)} kg · lezárva: ${u.today_closed ? "igen" : "nem"}
                 </div>
                 <div class="adminUserActions">
+                    ${(Number(u.today_tetel || 0) + Number(u.today_suly || 0) > 0 && !u.today_closed) ? `<button class="adminMiniBtn good" data-action="close-day" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">Mai nap lezárása</button>` : ""}
                     <button class="adminMiniBtn" data-action="rename" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">Átnevezés</button>
                     <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">PIN csere</button>
                     <button class="adminMiniBtn ${isAdminRow(u) ? "danger" : "good"}" data-action="${isAdminRow(u) ? "admin-off" : "admin-on"}" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">${isAdminRow(u) ? "Admin jel le" : "Admin jel fel"}</button>
@@ -4358,6 +4370,13 @@ async function adminUserAction(btn){
             alert(isAdmin ? "Admin jel bekapcsolva." : "Admin jel levéve.");
         }
 
+        if(action === "close-day"){
+            const date = getDefaultAdminDate();
+            if(!confirm("Lezárod online ezt a napot?\n\n" + name + " · " + date + "\n\nEz az élő adatokból készít lezárt napi eredményt.")) return;
+            await adminRpcChecked("sv_admin_close_user_day", {p_token:getAdminToken(), p_user_id:userId, p_work_date:date}, "Admin napzárás nem sikerült.");
+            alert("Nap online lezárva: " + name);
+        }
+
         if(action === "delete-user"){
             if(!confirm("TELJES TÖRLÉS: " + name + "\n\nEz törli a usert, az élő adatait és minden lezárt eredményét. Biztos?")) return;
             const code = prompt("A törléshez írd be pontosan: TORLES");
@@ -4411,7 +4430,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.13</span>
+                <span class="onlineStatusPill ok">V2.15</span>
             </div>
         </div>
 
@@ -4485,11 +4504,26 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.13</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.15</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
         <div class="menuCard">
+            <div class="menuCardTitle">V2.15 - Admin napzárás</div>
+            <div class="small">
+                <div>- Adminból lezárható egy felhasználó kiválasztott napi online állása.</div>
+                <div>- A lezárás az élő adatból készít napi lezárt eredményt, és lezártként jelöli az online napot.</div>
+                <div>- Hasznos, ha valaki elfelejti megnyomni a Szedés lezárása gombot.</div>
+            </div>
+            <hr>
+
+            <div class="menuCardTitle">V2.14 - Online TOP 3 részletek</div>
+            <div class="small">
+                <div>- Az online dobogón az első 3 helyezettnél is látszanak a részletes adatok.</div>
+                <div>- Az első 3 helyezett nem csak az egységet mutatja, hanem a tétel, súly és 700-as adatokat is.</div>
+            </div>
+            <hr>
+
             <div class="menuCardTitle">V2.13 - Csak alsó menüsáv</div>
             <div class="settingNote">
                 A belső felső menü és fülsor kikerült az Online, Átlagok, Beállítások és Admin oldalak tetejéről. A navigáció most csak az alsó fix menüsávból működik.
