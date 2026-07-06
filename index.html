@@ -740,7 +740,7 @@ button:active{
 }
 
 
-/* PRO UI V2.15 */
+/* PRO UI V2.16 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1256,7 +1256,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.15 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.16 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -1896,8 +1896,8 @@ function toggleHiddenMode(){
 
     const overlay = document.getElementById("menuOverlay");
     if(overlay && overlay.style.display === "block"){
-        const activeTab = document.querySelector(".menuTab.active");
-        showMenuTab(activeTab ? activeTab.dataset.tab : "elozmenyek");
+        const box = document.getElementById("menuContent");
+        showMenuTab(box && box.dataset.tab ? box.dataset.tab : "beallitasok");
     }
 }
 
@@ -3771,7 +3771,7 @@ function isPublicAdminName(name){
 }
 
 function isAdminRow(r){
-    return Boolean(r && (r.is_admin === true || r.is_admin === "true" || isPublicAdminName(r.name)));
+    return Boolean(r && (r.is_admin === true || r.is_admin === "true"));
 }
 
 function renderNameWithAdminBadge(name, isAdmin){
@@ -3802,7 +3802,7 @@ function getOnlineMeta(r, type){
     const visible = r && r.numbers_visible !== false;
 
     if(type === "live" && !visible){
-        return "Számok délig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
+        return "Számok 11:00-ig rejtve · utolsó frissítés: " + formatOnlineTime(r.updated_at);
     }
 
     if(type === "monthly"){
@@ -3822,6 +3822,7 @@ function renderPodiumCard(r, type){
     const medalClass = getRankClass(rank);
     const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
     const adminMark = isAdminRow(r);
+    const metaHtml = type === "live" ? "" : `<div class="podiumMeta">${getOnlineMeta(r, type)}</div>`;
 
     return `
         <div class="podiumCard rank${rank}">
@@ -3831,7 +3832,7 @@ function renderPodiumCard(r, type){
             </div>
             <div>
                 <div class="podiumScore">${getOnlineShortScore(r, type)}</div>
-                <div class="podiumMeta">${getOnlineMeta(r, type)}</div>
+                ${metaHtml}
             </div>
         </div>
     `;
@@ -4430,11 +4431,18 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.15</span>
+                <span class="onlineStatusPill ok">V2.16</span>
             </div>
         </div>
 
-        <details class="settingsDetails" open>
+        <details class="settingsDetails">
+            <summary>📜 Előzmények</summary>
+            <div class="settingsDetailsBody">
+                ${renderElozmenyek()}
+            </div>
+        </details>
+
+        <details class="settingsDetails">
             <summary>👁️ Megjelenés és működés</summary>
             <div class="settingsDetailsBody">
                 <div class="menuLine"><span>Karton mód</span><b id="settingsKartonState">${kartonMod ? "Bekapcsolva" : "Kikapcsolva"}</b></div>
@@ -4504,11 +4512,20 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.15</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.16</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
         <div class="menuCard">
+            <div class="menuCardTitle">V2.16 - Apró online/admin javítások</div>
+            <div class="small">
+                <div>- Admin jel fel/le gomb adatbázis-alapúra javítva.</div>
+                <div>- Az online élő ranglista számadatai 11:00 után látszanak.</div>
+                <div>- A napi TOP 3 dobogón csak az egység látszik, a részletek nem.</div>
+                <div>- Az Előzmények bekerült a Beállítások menübe.</div>
+            </div>
+            <hr>
+
             <div class="menuCardTitle">V2.15 - Admin napzárás</div>
             <div class="small">
                 <div>- Adminból lezárható egy felhasználó kiválasztott napi online állása.</div>
@@ -4603,7 +4620,7 @@ function renderChangelog(){
             <div>- Supabase online kapcsolat hozzáadva</div>
             <div>- Szabad név + PIN regisztráció</div>
             <div>- Élő állás napközben, tétel alapján</div>
-            <div>- Délig csak helyezés látszik, déltől a számok is</div>
+            <div>- 11:00-ig csak helyezés látszik, 11:00 után a számok is</div>
             <div>- Napzáráskor PIN-kódot kér és végleges eredményt küld</div>
             <div>- Napi és havi online ranglista hozzáadva</div>
             <div>- Fizetés továbbra sem kerül feltöltésre</div>
@@ -5017,8 +5034,8 @@ function refreshActiveMenu(){
     const overlay = document.getElementById("menuOverlay");
 
     if(overlay && overlay.style.display === "block"){
-        const activeTab = document.querySelector(".menuTab.active");
-        showMenuTab(activeTab ? activeTab.dataset.tab : "elozmenyek");
+        const box = document.getElementById("menuContent");
+        showMenuTab(box && box.dataset.tab ? box.dataset.tab : "beallitasok");
     }
 }
 
