@@ -740,7 +740,7 @@ button:active{
 }
 
 
-/* PRO UI V2.18 */
+/* PRO UI V2.19 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1358,7 +1358,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.18 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.19 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -4288,19 +4288,23 @@ function renderOnlineChatCard(){
 function renderOnlineAuthCard(){
     const nameValue = getOnlineUserName();
     const notice = onlineUiNotice ? `<div class="settingNote"><span class="onlineStatusPill ${onlineUiNoticeType || ""}">${escapeHtml(onlineUiNotice)}</span></div>` : "";
+    const status = onlineUser && onlineUser.user_id
+        ? `Belépve: ${renderNameWithAdminBadge(onlineUser.name || nameValue, isAdminRow(onlineUser))}`
+        : "Nincs online felhasználó beállítva";
 
     return `
-        <div class="menuCard">
-            <div class="menuCardTitle">👤 Regisztráció / belépés</div>
-            <input id="onlineName" class="settingInput" type="text" placeholder="Név" value="${escapeHtml(nameValue)}">
-            <input id="onlinePin" class="settingInput" type="password" inputmode="numeric" placeholder="PIN, 4-8 számjegy">
-            <div id="onlineMessage">${notice}</div>
-            <div class="onlineGrid">
-                <button class="settingBtn active" onclick="registerOnlineUser()">Regisztráció</button>
-                <button class="settingBtn" onclick="loginOnlineUser()">Belépés</button>
-            </div>
-            ${onlineUser ? `<button class="settingBtn" style="margin-top:8px;" onclick="logoutOnlineUser()">Felhasználó törlése erről a telefonról</button>` : ""}
+        <div class="menuLine"><span>Állapot</span><b>${status}</b></div>
+        <div class="settingNote">
+            Az online ranglista és a chat csak belépett online felhasználóval látható. A PIN csak belépéshez / napzáráshoz kell, nem kerül elmentésre.
         </div>
+        <input id="onlineName" class="settingInput" type="text" placeholder="Név" value="${escapeHtml(nameValue)}">
+        <input id="onlinePin" class="settingInput" type="password" inputmode="numeric" placeholder="PIN, 4-8 számjegy">
+        <div id="onlineMessage">${notice}</div>
+        <div class="onlineGrid">
+            <button class="settingBtn active" onclick="registerOnlineUser()">Regisztráció</button>
+            <button class="settingBtn" onclick="loginOnlineUser()">Belépés</button>
+        </div>
+        ${onlineUser ? `<button class="settingBtn" style="margin-top:8px;" onclick="logoutOnlineUser()">Felhasználó törlése erről a telefonról</button>` : ""}
     `;
 }
 
@@ -4310,10 +4314,15 @@ function renderOnlineVerseny(){
     if(!onlineUser || !onlineUser.user_id){
         return `
             <div class="menuCard">
-                <div class="menuCardTitle">📡 Online ranglista</div>
-                <div class="empty">Az élő ranglista csak online belépés után látható.</div>
+                <div class="proCardHeader">
+                    <div>
+                        <div class="proCardTitle">📡 Online ranglista</div>
+                        <div class="proCardSub">Belépés után látható az élő ranglista és a chat.</div>
+                    </div>
+                </div>
+                <div class="empty">Az online részt a Beállítások → Online fiók alatt tudod bekapcsolni.</div>
+                <button class="settingBtn active" style="margin-top:10px;" onclick="showMenuTab('beallitasok')">⚙️ Online fiók beállítása</button>
             </div>
-            ${renderOnlineAuthCard()}
         `;
     }
 
@@ -4334,20 +4343,15 @@ function renderOnlineVerseny(){
             <div id="onlineLiveBoard" style="margin-top:10px;"></div>
         </div>
 
-        <div class="menuCard">
-            <div class="proCardHeader">
-                <div>
-                    <div class="proCardTitle">📅 Havi ranglista</div>
-                    <div class="proCardSub">Aktuális hónap · tétel + súly alapján</div>
-                </div>
-                <span class="onlineStatusPill ok">Egység</span>
-            </div>
-            <div id="onlineMonthBoard"></div>
-        </div>
-
         ${renderOnlineChatCard()}
 
-        ${renderOnlineAuthCard()}
+        <details class="settingsDetails onlineMonthlyDetails">
+            <summary>📅 Havi ranglista</summary>
+            <div class="settingsDetailsBody">
+                <div class="settingNote">Aktuális hónap · tétel + súly alapján.</div>
+                <div id="onlineMonthBoard"><div class="empty">Havi ranglista betöltése...</div></div>
+            </div>
+        </details>
     `;
 }
 
@@ -4763,9 +4767,16 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.18</span>
+                <span class="onlineStatusPill ok">V2.19</span>
             </div>
         </div>
+
+        <details class="settingsDetails">
+            <summary>👤 Online fiók</summary>
+            <div class="settingsDetailsBody">
+                ${renderOnlineAuthCard()}
+            </div>
+        </details>
 
         <details class="settingsDetails">
             <summary>📜 Előzmények</summary>
@@ -4844,8 +4855,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.18</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.19</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.19 - Online menü tisztítás</div>
+            <div class="small">
+                <div>- A regisztráció / belépés blokk átkerült a Beállítások → Online fiók részbe.</div>
+                <div>- Az Online menü tetején az élő ranglista maradt, alatta rögtön a chat látszik.</div>
+                <div>- A havi ranglista az Online menü aljára került összecsukható részként.</div>
+                <div>- SQL módosítás nem szükséges ehhez a frissítéshez.</div>
+            </div>
         </div>
 
         <div class="menuCard">
