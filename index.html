@@ -740,7 +740,7 @@ button:active{
 }
 
 
-/* PRO UI V2.16 */
+/* PRO UI V2.18 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1138,6 +1138,108 @@ button:active{
 }
 
 
+/* CHAT */
+.chatCard{
+    border-color:rgba(34,197,94,.18);
+}
+.chatHeaderActions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.chatMessages{
+    margin-top:10px;
+    max-height:330px;
+    overflow-y:auto;
+    padding-right:3px;
+    scroll-behavior:smooth;
+}
+.chatMessage{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:16px;
+    padding:10px 11px;
+    margin-top:8px;
+    box-shadow:0 8px 18px rgba(0,0,0,.14);
+}
+.chatMessage.mine{
+    background:linear-gradient(135deg, rgba(34,197,94,.12), rgba(15,23,42,.98));
+    border-color:rgba(34,197,94,.24);
+}
+.chatMessage.adminMsg{
+    border-color:rgba(251,146,60,.26);
+}
+.chatMsgTop{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:5px;
+}
+.chatMsgName{
+    font-size:13px;
+    font-weight:950;
+}
+.chatMsgTime{
+    color:#94a3b8;
+    font-size:11px;
+    font-weight:750;
+    white-space:nowrap;
+}
+.chatMsgText{
+    font-size:14px;
+    color:#e5e7eb;
+    line-height:1.35;
+    white-space:pre-wrap;
+    word-break:break-word;
+}
+.chatInputBox{
+    margin-top:12px;
+    display:grid;
+    gap:8px;
+}
+.chatInput{
+    width:100%;
+    min-height:64px;
+    resize:vertical;
+    border:none;
+    border-radius:16px;
+    padding:12px;
+    background:#0f172a;
+    color:#fff;
+    font-size:15px;
+    font-weight:750;
+    outline:none;
+    border:1px solid rgba(148,163,184,.18);
+    box-sizing:border-box;
+}
+.chatInput:focus{
+    border-color:rgba(34,197,94,.42);
+    box-shadow:0 0 0 3px rgba(34,197,94,.10);
+}
+.chatSendLine{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+}
+.chatCounter{
+    font-size:12px;
+    color:#94a3b8;
+    font-weight:800;
+}
+.chatMiniBtn{
+    border:none;
+    border-radius:999px;
+    padding:6px 9px;
+    font-size:11px;
+    font-weight:950;
+    color:#fecaca;
+    background:#7f1d1d;
+    cursor:pointer;
+}
+
 /* ADMIN */
 .adminSummaryGrid{
     display:grid;
@@ -1256,7 +1358,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.16 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.18 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -1323,6 +1425,9 @@ let onlineUser = loadJson("onlineUser", null);
 let adminSession = loadJson("adminSession", null);
 let onlineUiNotice = "";
 let onlineUiNoticeType = "";
+let chatRefreshTimer = null;
+let chatUiNotice = "";
+let chatUiNoticeType = "";
 
 if(!data || typeof data !== "object" || Array.isArray(data)){
     data = {};
@@ -2391,6 +2496,11 @@ function openMenu(startTab){
 }
 
 function closeMenu(){
+    if(chatRefreshTimer){
+        clearInterval(chatRefreshTimer);
+        chatRefreshTimer = null;
+    }
+
     const overlay = document.getElementById("menuOverlay");
 
     if(overlay){
@@ -2402,6 +2512,11 @@ function closeMenu(){
 }
 
 function showMenuTab(tab){
+    if(chatRefreshTimer){
+        clearInterval(chatRefreshTimer);
+        chatRefreshTimer = null;
+    }
+
     document.querySelectorAll(".menuTab").forEach(function(btn){
         btn.classList.remove("active");
 
@@ -2427,7 +2542,11 @@ function showMenuTab(tab){
     if(tab === "online"){
         box.innerHTML = renderOnlineVerseny();
         if(onlineUser && onlineUser.user_id){
-            setTimeout(function(){ refreshOnlineBoards(); }, 50);
+            setTimeout(function(){
+                refreshOnlineBoards();
+                refreshChatMessages(true);
+                startChatAutoRefresh();
+            }, 50);
         }
     }
 
@@ -3822,7 +3941,8 @@ function renderPodiumCard(r, type){
     const medalClass = getRankClass(rank);
     const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
     const adminMark = isAdminRow(r);
-    const metaHtml = type === "live" ? "" : `<div class="podiumMeta">${getOnlineMeta(r, type)}</div>`;
+    const showOnlyScore = rank === 1;
+    const metaHtml = showOnlyScore ? "" : `<div class="podiumMeta">${getOnlineMeta(r, type)}</div>`;
 
     return `
         <div class="podiumCard rank${rank}">
@@ -3955,6 +4075,216 @@ function getOnlineSyncText(){
     return `<span class="onlineStatusPill warn">Még nincs online frissítés</span>`;
 }
 
+
+function formatChatTime(value){
+    if(!value) return "";
+
+    try{
+        const d = new Date(value);
+        return d.toLocaleTimeString("hu-HU", {hour:"2-digit", minute:"2-digit"});
+    }
+    catch(e){
+        return "";
+    }
+}
+
+function setChatMessage(text, type){
+    chatUiNotice = text || "";
+    chatUiNoticeType = type || "";
+
+    const box = document.getElementById("chatMessageBox");
+    if(!box) return;
+
+    box.innerHTML = text ? `<div class="settingNote"><span class="onlineStatusPill ${type || ""}">${escapeHtml(text)}</span></div>` : "";
+}
+
+function updateChatCounter(){
+    const input = document.getElementById("chatInput");
+    const counter = document.getElementById("chatCounter");
+    if(!input || !counter) return;
+
+    counter.textContent = String(input.value.length) + "/200";
+}
+
+function renderChatRows(rows){
+    if(!Array.isArray(rows) || rows.length === 0){
+        return `<div class="empty">Még nincs üzenet. Írj be valamit, aztán küldés.</div>`;
+    }
+
+    return rows.map(function(r){
+        const mine = onlineUser && onlineUser.user_id && String(r.user_id || "") === String(onlineUser.user_id);
+        const adminMark = isAdminRow(r);
+        const canDelete = adminSession && adminSession.token && r.id;
+
+        return `
+            <div class="chatMessage ${mine ? "mine" : ""} ${adminMark ? "adminMsg" : ""}">
+                <div class="chatMsgTop">
+                    <div class="chatMsgName">${renderNameWithAdminBadge(r.name || "Ismeretlen", adminMark)}</div>
+                    <div class="chatMsgTime">${formatChatTime(r.created_at)}</div>
+                </div>
+                <div class="chatMsgText">${escapeHtml(r.message || "")}</div>
+                ${canDelete ? `<div style="margin-top:8px;"><button class="chatMiniBtn" data-message-id="${escapeHtml(r.id)}" onclick="adminDeleteChatMessage(this)">Törlés</button></div>` : ""}
+            </div>
+        `;
+    }).join("");
+}
+
+async function refreshChatMessages(silent){
+    const box = document.getElementById("chatMessages");
+    if(!box || !onlineUser || !onlineUser.user_id) return;
+
+    if(!silent){
+        box.innerHTML = `<div class="empty">Chat betöltése...</div>`;
+    }
+
+    try{
+        const rows = await supabaseRpc("sv_chat_get", {p_user_id:onlineUser.user_id, p_limit:50});
+        box.innerHTML = renderChatRows(rows || []);
+        box.scrollTop = box.scrollHeight;
+        if(!silent) setChatMessage("Chat frissítve.", "ok");
+    }
+    catch(e){
+        if(!silent){
+            setChatMessage(e.message || "A chat nem elérhető.", "bad");
+        }
+        box.innerHTML = `<div class="empty">Chat nem elérhető.<br>${escapeHtml(e.message || "")}</div>`;
+    }
+}
+
+function startChatAutoRefresh(){
+    if(chatRefreshTimer){
+        clearInterval(chatRefreshTimer);
+        chatRefreshTimer = null;
+    }
+
+    if(!onlineUser || !onlineUser.user_id) return;
+
+    chatRefreshTimer = setInterval(function(){
+        const box = document.getElementById("chatMessages");
+        if(!box){
+            clearInterval(chatRefreshTimer);
+            chatRefreshTimer = null;
+            return;
+        }
+        refreshChatMessages(true);
+    }, 15000);
+}
+
+async function sendChatMessage(){
+    const input = document.getElementById("chatInput");
+    if(!input) return;
+
+    const msg = input.value.trim();
+
+    if(!onlineUser || !onlineUser.user_id){
+        setChatMessage("Chathez online belépés szükséges.", "bad");
+        return;
+    }
+
+    if(msg.length < 1){
+        setChatMessage("Írj be egy üzenetet.", "warn");
+        return;
+    }
+
+    if(msg.length > 200){
+        setChatMessage("Maximum 200 karakter lehet.", "bad");
+        return;
+    }
+
+    try{
+        setChatMessage("Küldés...", "warn");
+        const result = await supabaseRpc("sv_chat_send", {p_user_id:onlineUser.user_id, p_message:msg});
+
+        if(result && result.ok === false){
+            throw new Error(result.error || "Üzenet küldése nem sikerült.");
+        }
+
+        input.value = "";
+        updateChatCounter();
+        setChatMessage("Elküldve.", "ok");
+        await refreshChatMessages(true);
+    }
+    catch(e){
+        setChatMessage(e.message || "Üzenet küldése nem sikerült.", "bad");
+    }
+}
+
+async function adminDeleteChatMessage(btn){
+    const id = btn ? btn.dataset.messageId : "";
+    if(!id || !adminSession || !adminSession.token){
+        setChatMessage("Ehhez admin belépés kell.", "bad");
+        return;
+    }
+
+    if(!confirm("Törlöd ezt a chat üzenetet?")) return;
+
+    try{
+        const result = await supabaseRpc("sv_admin_delete_chat_message", {p_token:getAdminToken(), p_message_id:Number(id)});
+
+        if(result && result.ok === false){
+            throw new Error(result.error || "Üzenet törlése nem sikerült.");
+        }
+
+        setChatMessage("Üzenet törölve.", "ok");
+        refreshChatMessages(true);
+    }
+    catch(e){
+        setChatMessage(e.message || "Üzenet törlése nem sikerült.", "bad");
+    }
+}
+
+async function adminClearChat(){
+    if(!adminSession || !adminSession.token){
+        setChatMessage("Ehhez admin belépés kell.", "bad");
+        return;
+    }
+
+    if(!confirm("Biztosan üríted a teljes chatet?")) return;
+
+    try{
+        const result = await supabaseRpc("sv_admin_clear_chat", {p_token:getAdminToken()});
+
+        if(result && result.ok === false){
+            throw new Error(result.error || "Chat ürítése nem sikerült.");
+        }
+
+        setChatMessage("Chat ürítve.", "ok");
+        refreshChatMessages(true);
+    }
+    catch(e){
+        setChatMessage(e.message || "Chat ürítése nem sikerült.", "bad");
+    }
+}
+
+function renderOnlineChatCard(){
+    const notice = chatUiNotice ? `<div class="settingNote"><span class="onlineStatusPill ${chatUiNoticeType || ""}">${escapeHtml(chatUiNotice)}</span></div>` : "";
+    const adminActions = adminSession && adminSession.token ? `<button class="settingBtn" style="width:auto;padding:10px 12px;font-size:13px;" onclick="adminClearChat()">🗑️ Chat ürítés</button>` : "";
+
+    return `
+        <div class="menuCard chatCard">
+            <div class="proCardHeader">
+                <div>
+                    <div class="proCardTitle">💬 Chat</div>
+                    <div class="proCardSub">Közös üzenőfal · csak online belépett felhasználóknak</div>
+                </div>
+                <div class="chatHeaderActions">
+                    <button class="settingBtn active" style="width:auto;padding:10px 12px;font-size:13px;" onclick="refreshChatMessages(false)">🔄 Chat</button>
+                    ${adminActions}
+                </div>
+            </div>
+            <div id="chatMessageBox">${notice}</div>
+            <div id="chatMessages" class="chatMessages"><div class="empty">Chat betöltése...</div></div>
+            <div class="chatInputBox">
+                <textarea id="chatInput" class="chatInput" maxlength="200" placeholder="Üzenet írása..." oninput="updateChatCounter()"></textarea>
+                <div class="chatSendLine">
+                    <span id="chatCounter" class="chatCounter">0/200</span>
+                    <button class="settingBtn active" style="width:auto;margin-top:0;" onclick="sendChatMessage()">Küldés</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function renderOnlineAuthCard(){
     const nameValue = getOnlineUserName();
     const notice = onlineUiNotice ? `<div class="settingNote"><span class="onlineStatusPill ${onlineUiNoticeType || ""}">${escapeHtml(onlineUiNotice)}</span></div>` : "";
@@ -4014,6 +4344,8 @@ function renderOnlineVerseny(){
             </div>
             <div id="onlineMonthBoard"></div>
         </div>
+
+        ${renderOnlineChatCard()}
 
         ${renderOnlineAuthCard()}
     `;
@@ -4431,7 +4763,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.16</span>
+                <span class="onlineStatusPill ok">V2.18</span>
             </div>
         </div>
 
@@ -4512,11 +4844,28 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.16</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.18</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
         <div class="menuCard">
+            <div class="menuCardTitle">V2.18 - Online chat</div>
+            <div class="small">
+                <div>- Az Online menübe bekerült a közös chat / üzenőfal.</div>
+                <div>- Chatet csak online belépett felhasználó lát és írhat.</div>
+                <div>- Az utolsó 50 üzenet jelenik meg, automatikus frissítéssel.</div>
+                <div>- Admin belépéssel üzenet törlés és teljes chat ürítés is elérhető.</div>
+            </div>
+            <hr>
+
+            <div class="menuCardTitle">V2.17 - Online dobogó finomítás</div>
+            <div class="small">
+                <div>- Az online ranglistán csak az 1. helyezett dobogókártyája mutat kizárólag egységet.</div>
+                <div>- A 2. és 3. helyezettnél újra látszanak a részletes adatok.</div>
+                <div>- SQL módosítás nem szükséges ehhez a frissítéshez.</div>
+            </div>
+            <hr>
+
             <div class="menuCardTitle">V2.16 - Apró online/admin javítások</div>
             <div class="small">
                 <div>- Admin jel fel/le gomb adatbázis-alapúra javítva.</div>
