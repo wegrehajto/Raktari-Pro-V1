@@ -740,7 +740,7 @@ button:active{
 }
 
 
-/* PRO UI V2.20 */
+/* PRO UI V2.21 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1358,7 +1358,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.20 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.21 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -3946,10 +3946,10 @@ function getOnlineMeta(r, type){
     }
 
     if(type === "monthly"){
-        return "Egység: " + fmt(getMonthlyScore(r)) + " · " + fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
+        return fmt(r.total_tetel) + " tétel · " + fmt(r.total_suly) + " kg · " + fmt(r.days_count) + " nap · 700-as: " + fmt(r.total_seven_hundreds);
     }
 
-    return "Egység: " + fmt(Number(r.tetel || 0) + Number(r.suly || 0)) + " · " + fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
+    return fmt(r.tetel) + " tétel · " + fmt(r.suly) + " kg · 700-as: " + fmt(r.seven_hundreds || 0);
 }
 
 function getOnlineShortScore(r, type){
@@ -4787,7 +4787,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.20</span>
+                <span class="onlineStatusPill ok">V2.21</span>
             </div>
         </div>
 
@@ -4875,11 +4875,19 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.20</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.21</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
         <div class="menuCard">
+            <div class="menuCardTitle">V2.21 - Egység kiírás tisztítása</div>
+            <div class="settingNote">
+                <div>- Az online ranglistában az egység már csak egyszer látszik fő értékként.</div>
+                <div>- Az alatta lévő részben csak a tétel, súly és 700-as adatok maradtak.</div>
+            </div>
+        </div>
+
+        <div class="menuCard changelogCard">
             <div class="menuCardTitle">V2.20 - Online és átlagok finomítás</div>
             <div class="small">
                 <div>- Online ranglistán minden helyezettnél látszanak a részletes adatok.</div>
