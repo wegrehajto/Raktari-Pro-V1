@@ -740,7 +740,7 @@ button:active{
 }
 
 
-/* PRO UI V2.21 */
+/* PRO UI V2.23 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1358,7 +1358,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.21 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.23 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -1425,6 +1425,7 @@ let onlineUser = loadJson("onlineUser", null);
 let adminSession = loadJson("adminSession", null);
 let onlineUiNotice = "";
 let onlineUiNoticeType = "";
+let onlineSettings = { online_standings_hidden:false };
 let chatRefreshTimer = null;
 let chatUiNotice = "";
 let chatUiNoticeType = "";
@@ -3914,6 +3915,10 @@ function isAdminRow(r){
     return Boolean(r && (r.is_admin === true || r.is_admin === "true"));
 }
 
+function isOnlineHiddenRow(r){
+    return Boolean(r && (r.online_hidden === true || r.online_hidden === "true"));
+}
+
 function renderNameWithAdminBadge(name, isAdmin){
     return escapeHtml(name || "Ismeretlen") + (isAdmin ? ` <span class="adminBadge">ADMIN</span>` : "");
 }
@@ -4051,6 +4056,31 @@ function escapeHtml(str){
     });
 }
 
+function areOnlineStandingsHidden(){
+    return Boolean(onlineSettings && onlineSettings.online_standings_hidden === true);
+}
+
+function renderOnlineHiddenNotice(){
+    return `<div class="empty">Az online ranglista jelenleg admin által el van rejtve.</div>`;
+}
+
+async function refreshOnlineSettings(){
+    try{
+        const result = await supabaseRpc("sv_get_online_settings", {});
+        if(result && result.ok !== false){
+            onlineSettings = {
+                online_standings_hidden: Boolean(result.online_standings_hidden)
+            };
+        }
+    }
+    catch(e){
+        // Ha az SQL patch még nincs fent, ne akadjon meg az app.
+        onlineSettings = onlineSettings || { online_standings_hidden:false };
+    }
+
+    return onlineSettings;
+}
+
 async function refreshOnlineBoards(){
     const liveBox = document.getElementById("onlineLiveBoard");
     const monthBox = document.getElementById("onlineMonthBoard");
@@ -4066,6 +4096,15 @@ async function refreshOnlineBoards(){
     if(monthBox) monthBox.innerHTML = `<div class="empty">Online adatok betöltése...</div>`;
 
     try{
+        await refreshOnlineSettings();
+
+        if(areOnlineStandingsHidden()){
+            const hiddenMsg = renderOnlineHiddenNotice();
+            if(liveBox) liveBox.innerHTML = hiddenMsg;
+            if(monthBox) monthBox.innerHTML = hiddenMsg;
+            return;
+        }
+
         const currentMonth = today.slice(0,7);
         const live = await supabaseRpc("sv_get_live_leaderboard", {p_work_date:today});
         const monthly = await supabaseRpc("sv_get_monthly_leaderboard", {p_month:currentMonth});
@@ -4511,6 +4550,13 @@ async function refreshAdminDashboard(showMsg){
             throw new Error(result && result.error ? result.error : "Admin adatok nem elérhetők.");
         }
 
+        try{
+            result.settings = await refreshOnlineSettings();
+        }
+        catch(e){
+            result.settings = onlineSettings || { online_standings_hidden:false };
+        }
+
         box.innerHTML = renderAdminDashboard(result);
         if(showMsg) setAdminMessage("Admin adatok frissítve.", "ok");
     }
@@ -4535,6 +4581,22 @@ async function adminRpcChecked(fn, payload, fallbackMessage){
     return result;
 }
 
+function renderAdminVisibilityCard(settings){
+    const hidden = Boolean(settings && settings.online_standings_hidden === true);
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">👁️ Online adatok láthatósága</div>
+            <div class="settingNote">
+                Itt tudod elrejteni vagy visszakapcsolni az online ranglistát. A chat ettől még működik.
+            </div>
+            <div class="menuLine"><span>Online ranglista</span><b>${hidden ? "Elrejtve" : "Látható"}</b></div>
+            <button class="settingBtn ${hidden ? "active" : "danger"}" onclick="adminToggleOnlineVisibility(${hidden ? "false" : "true"})">
+                ${hidden ? "Adatok megjelenítése" : "Adatok elrejtése"}
+            </button>
+        </div>
+    `;
+}
+
 function renderAdminDashboard(result){
     const live = Array.isArray(result.live) ? result.live : [];
     const daily = Array.isArray(result.daily) ? result.daily : [];
@@ -4543,6 +4605,8 @@ function renderAdminDashboard(result){
     const summary = result.summary || {};
 
     return `
+        ${renderAdminVisibilityCard(result.settings || onlineSettings)}
+
         <div class="menuCard">
             <div class="menuCardTitle">📊 Admin gyors összesítő</div>
             <div class="settingNote">Dátum: ${escapeHtml(result.work_date || getDefaultAdminDate())} · Hónap: ${escapeHtml(result.work_month || getDefaultAdminMonth())}</div>
@@ -4585,18 +4649,21 @@ function renderAdminLiveRows(rows){
 
     return rows.map(function(r){
         const closed = r.is_closed ? `<span class="onlineStatusPill ok">lezárva</span>` : `<span class="onlineStatusPill warn">nyitott</span>`;
+        const hidden = isOnlineHiddenRow(r);
+        const hiddenPill = hidden ? `<span class="onlineStatusPill bad">online rejtve</span>` : `<span class="onlineStatusPill ok">online látható</span>`;
         return `
             <div class="onlineBoardItem ${r.active ? "" : "adminRowMuted"}">
                 <div class="onlineRankLine">
                     <div class="onlineRank ${getRankClass(r.helyezes)}">${fmt(r.helyezes || 0)}.</div>
                     <div class="onlineName ${getRankClass(r.helyezes)}">${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
-                    <div>${closed}</div>
+                    <div>${closed} ${hiddenPill}</div>
                 </div>
                 <div class="onlineMeta">
                     Egység: ${fmt(Number(r.tetel || 0) + Number(r.suly || 0))} · ${fmt(r.tetel)} tétel · ${fmt(r.suly)} kg · karton: ${fmt(r.karton)} · ~egység: ${fmt(r.osszegyseg)} · 700-as: ${fmt(r.seven_hundreds)} · max széria: ${fmt(r.best_700_streak)} · frissítve: ${formatOnlineTime(r.updated_at)}
                 </div>
                 <div class="adminUserActions">
                     ${!r.is_closed ? `<button class="adminMiniBtn good" data-action="close-day" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Nap lezárása</button>` : `<button class="adminMiniBtn" data-action="close-day" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Lezárt nap frissítése</button>`}
+                    <button class="adminMiniBtn ${hidden ? "good" : "danger"}" data-action="${hidden ? "show-online" : "hide-online"}" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">${hidden ? "Online adatok mutatása" : "Online adatok elrejtése"}</button>
                     <button class="adminMiniBtn danger" data-action="delete-live" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">Mai élő törlése</button>
                     <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(r.user_id)}" data-name="${escapeHtml(r.name)}" onclick="adminUserAction(this)">PIN csere</button>
                 </div>
@@ -4650,17 +4717,20 @@ function renderAdminUsers(rows){
 
     return rows.map(function(u){
         const status = u.active ? `<span class="onlineStatusPill ok">aktív</span>` : `<span class="onlineStatusPill bad">tiltva</span>`;
+        const hidden = isOnlineHiddenRow(u);
+        const hiddenStatus = hidden ? `<span class="onlineStatusPill bad">online rejtve</span>` : `<span class="onlineStatusPill ok">online látható</span>`;
         return `
             <div class="onlineBoardItem ${u.active ? "" : "adminRowMuted"}">
                 <div class="onlineRankLine">
                     <div class="onlineName">${renderNameWithAdminBadge(u.name || "Ismeretlen", isAdminRow(u))}</div>
-                    <div>${status}</div>
+                    <div>${status} ${hiddenStatus}</div>
                 </div>
                 <div class="onlineMeta">
                     Regisztrálva: ${formatOnlineDateTime(u.created_at)} · mai tétel: ${fmt(u.today_tetel || 0)} · mai súly: ${fmt(u.today_suly || 0)} kg · lezárva: ${u.today_closed ? "igen" : "nem"}
                 </div>
                 <div class="adminUserActions">
                     ${(Number(u.today_tetel || 0) + Number(u.today_suly || 0) > 0 && !u.today_closed) ? `<button class="adminMiniBtn good" data-action="close-day" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">Mai nap lezárása</button>` : ""}
+                    <button class="adminMiniBtn ${hidden ? "good" : "danger"}" data-action="${hidden ? "show-online" : "hide-online"}" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">${hidden ? "Online adatok mutatása" : "Online adatok elrejtése"}</button>
                     <button class="adminMiniBtn" data-action="rename" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">Átnevezés</button>
                     <button class="adminMiniBtn" data-action="reset-pin" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">PIN csere</button>
                     <button class="adminMiniBtn ${isAdminRow(u) ? "danger" : "good"}" data-action="${isAdminRow(u) ? "admin-off" : "admin-on"}" data-user-id="${escapeHtml(u.user_id)}" data-name="${escapeHtml(u.name)}" onclick="adminUserAction(this)">${isAdminRow(u) ? "Admin jel le" : "Admin jel fel"}</button>
@@ -4680,6 +4750,35 @@ function formatOnlineDateTime(value){
     }
     catch(e){
         return "ismeretlen";
+    }
+}
+
+async function adminToggleOnlineVisibility(hidden){
+    if(!adminSession || !adminSession.token) return;
+
+    const wantHidden = Boolean(hidden);
+    const msg = wantHidden
+        ? "Elrejted az online ranglistát minden online felhasználó elől?\n\nA chat továbbra is működni fog."
+        : "Visszakapcsolod az online ranglista megjelenítését?";
+
+    if(!confirm(msg)) return;
+
+    try{
+        const result = await adminRpcChecked("sv_admin_set_online_standings_hidden", {
+            p_token:getAdminToken(),
+            p_hidden:wantHidden
+        }, "Az online adatok láthatóságának módosítása nem sikerült.");
+
+        onlineSettings = {
+            online_standings_hidden: Boolean(result && result.online_standings_hidden)
+        };
+
+        setAdminMessage(wantHidden ? "Online ranglista elrejtve." : "Online ranglista újra látható.", "ok");
+        await refreshAdminDashboard(false);
+        refreshOnlineBoards();
+    }
+    catch(e){
+        alert("Nem sikerült módosítani az online láthatóságot:\n" + (e.message || "ismeretlen hiba"));
     }
 }
 
@@ -4725,6 +4824,16 @@ async function adminUserAction(btn){
             if(!confirm((isAdmin ? "Admin jelet adsz" : "Admin jelet leveszel") + " ennél a felhasználónál?\n\n" + name)) return;
             await adminRpcChecked("sv_admin_update_user", {p_token:getAdminToken(), p_user_id:userId, p_name:null, p_pin:null, p_active:null, p_is_admin:isAdmin}, "Admin jel módosítása nem sikerült.");
             alert(isAdmin ? "Admin jel bekapcsolva." : "Admin jel levéve.");
+        }
+
+        if(action === "hide-online" || action === "show-online"){
+            const hidden = action === "hide-online";
+            const confirmText = hidden
+                ? "Elrejted ennek a felhasználónak az online ranglista adatait?\n\n" + name + "\n\nAdminban továbbra is látni fogod."
+                : "Újra látható legyen ennek a felhasználónak az online ranglista adata?\n\n" + name;
+            if(!confirm(confirmText)) return;
+            await adminRpcChecked("sv_admin_set_user_online_hidden", {p_token:getAdminToken(), p_user_id:userId, p_hidden:hidden}, "Online adatok láthatóságának módosítása nem sikerült.");
+            alert(hidden ? "Felhasználó online adatai elrejtve." : "Felhasználó online adatai újra láthatók.");
         }
 
         if(action === "close-day"){
@@ -4787,7 +4896,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.21</span>
+                <span class="onlineStatusPill ok">V2.23</span>
             </div>
         </div>
 
@@ -4875,8 +4984,25 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.21</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.23</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.23 - Felhasználónkénti online elrejtés</div>
+            <div class="settingNote">
+                <div>- Adminból külön-külön is elrejthető egy adott felhasználó online ranglista adata.</div>
+                <div>- Az elrejtett felhasználó nem látszik az élő és havi online ranglistában, adminban viszont továbbra is kezelhető.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.22 - Admin online elrejtés</div>
+            <div class="settingNote">
+                <div>- Admin menübe bekerült az Online adatok láthatósága blokk.</div>
+                <div>- Adminból elrejthető / visszakapcsolható az online ranglista.</div>
+                <div>- Elrejtéskor a chat továbbra is használható.</div>
+            </div>
         </div>
 
         <div class="menuCard">
