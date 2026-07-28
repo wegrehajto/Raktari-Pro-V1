@@ -236,6 +236,72 @@ button:active{
     letter-spacing:.2px;
 }
 
+.yesterdayCompareBox{
+    margin:-4px 0 12px;
+    padding:9px 11px;
+    border-radius:15px;
+    background:linear-gradient(135deg, rgba(15,23,42,.88), rgba(30,41,59,.72));
+    border:1px solid rgba(148,163,184,.18);
+    color:#d1d5db;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.35;
+    display:none;
+    box-shadow:0 10px 22px rgba(0,0,0,.22);
+}
+
+.yesterdayCompareBox .compareMain{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+}
+
+.yesterdayCompareBox .compareLabel{
+    color:#94a3b8;
+    font-size:11px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.45px;
+}
+
+.yesterdayCompareBox .compareValue{
+    color:#f8fafc;
+    font-weight:950;
+}
+
+.yesterdayCompareBox .compareDiff{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:3px 7px;
+    border-radius:999px;
+    border:1px solid rgba(148,163,184,.20);
+    background:rgba(15,23,42,.45);
+    color:#cbd5e1;
+    white-space:nowrap;
+    font-size:11px;
+}
+
+.yesterdayCompareBox .compareDiff.plus{
+    color:#86efac;
+    border-color:rgba(34,197,94,.28);
+    background:rgba(22,101,52,.20);
+}
+
+.yesterdayCompareBox .compareDiff.minus{
+    color:#fca5a5;
+    border-color:rgba(239,68,68,.28);
+    background:rgba(127,29,29,.20);
+}
+
+.yesterdayCompareBox .compareSub{
+    margin-top:4px;
+    color:#94a3b8;
+    font-size:11px;
+    font-weight:750;
+}
+
 .quoteBox{
     display:none;
     background:rgba(30,41,59,.78);
@@ -740,7 +806,7 @@ button:active{
 }
 
 
-/* PRO UI V2.23 */
+/* PRO UI V2.24 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1321,6 +1387,8 @@ button:active{
     0 kg
 </div>
 
+<div id="yesterdayCompareBox" class="yesterdayCompareBox"></div>
+
 <div id="backupReminderBox" class="backupReminderBox"></div>
 
 <button class="privacyBtn" onclick="toggleHiddenMode()" id="privacyBtn">
@@ -1358,7 +1426,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.23 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.24 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -2256,6 +2324,106 @@ function add(){
     }, 100);
 }
 
+function addDaysToKey(dateKey, offsetDays){
+    const parts = String(dateKey || "").split("-").map(Number);
+    if(parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return "";
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() + Number(offsetDays || 0));
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+}
+
+function getCurrentMinuteOfDay(){
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+}
+
+function getEntryMinuteOfDay(entry){
+    if(entry && entry.timestamp){
+        const parsed = new Date(entry.timestamp);
+        if(!isNaN(parsed.getTime())){
+            return parsed.getHours() * 60 + parsed.getMinutes();
+        }
+    }
+
+    const raw = String((entry && entry.ido) || "");
+    const match = raw.match(/(\d{1,2})[:.](\d{2})/);
+    if(match){
+        const h = Math.max(0, Math.min(23, Number(match[1] || 0)));
+        const m = Math.max(0, Math.min(59, Number(match[2] || 0)));
+        return h * 60 + m;
+    }
+
+    return null;
+}
+
+function getComparisonEntriesForDate(dateKey){
+    let entries = [];
+
+    closedPickings.forEach(function(record){
+        if((record && record.datum) === dateKey && Array.isArray(record.bevitelek)){
+            entries = entries.concat(record.bevitelek);
+        }
+    });
+
+    if(entries.length === 0 && data[dateKey] && Array.isArray(data[dateKey].bevitelek)){
+        entries = entries.concat(data[dateKey].bevitelek);
+    }
+
+    return entries;
+}
+
+function getWeightAtMinute(entries, minuteLimit){
+    return entries.reduce(function(total, entry){
+        const minute = getEntryMinuteOfDay(entry);
+        if(minute === null || minute > minuteLimit) return total;
+        return total + Number((entry && entry.suly) || 0);
+    }, 0);
+}
+
+function renderYesterdayComparison(){
+    const box = document.getElementById("yesterdayCompareBox");
+    if(!box) return;
+
+    ensureTodayData();
+
+    const currentDay = data[today] || createEmptyDay();
+    const yesterdayKey = addDaysToKey(today, -1);
+    const yesterdayEntries = getComparisonEntriesForDate(yesterdayKey);
+
+    if(yesterdayEntries.length === 0){
+        box.style.display = "block";
+        box.innerHTML = `
+            <div class="compareMain">
+                <div><span class="compareLabel">Súly / idő</span> <span class="compareValue">${getTimeShort()}</span></div>
+                <span class="compareDiff">nincs tegnapi adat</span>
+            </div>
+            <div class="compareSub">Ha a tegnapi napnál van beviteli előzmény, itt látszik majd, tegnap ilyenkor mennyinél jártál.</div>
+        `;
+        return;
+    }
+
+    const minuteNow = getCurrentMinuteOfDay();
+    const yesterdayWeight = getWeightAtMinute(yesterdayEntries, minuteNow);
+    const todayWeight = Number(currentDay.suly || 0);
+    const diff = todayWeight - yesterdayWeight;
+    const diffClass = diff > 0 ? "plus" : (diff < 0 ? "minus" : "");
+    const diffText = hiddenMode ? "eltakarva" : (diff > 0 ? "+" : "") + fmt(diff) + " kg";
+    const todayText = hiddenMode ? "•••• kg" : fmt(todayWeight) + " kg";
+    const yesterdayText = hiddenMode ? "•••• kg" : fmt(yesterdayWeight) + " kg";
+
+    box.style.display = "block";
+    box.innerHTML = `
+        <div class="compareMain">
+            <div><span class="compareLabel">Súly / idő</span> <span class="compareValue">${getTimeShort()} · ${todayText}</span></div>
+            <span class="compareDiff ${diffClass}">${diffText}</span>
+        </div>
+        <div class="compareSub">Tegnap ilyenkor: <b>${yesterdayText}</b></div>
+    `;
+}
+
 function render(){
     ensureTodayData();
 
@@ -2308,6 +2476,8 @@ function render(){
             banner.style.boxShadow = "0 12px 34px rgba(103,232,249,.35), 0 12px 28px rgba(0,0,0,.35)";
         }
     }
+
+    renderYesterdayComparison();
 
     const stEl = document.getElementById("st");
     const h700El = document.getElementById("h700");
@@ -4896,7 +5066,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.23</span>
+                <span class="onlineStatusPill ok">V2.24</span>
             </div>
         </div>
 
@@ -4984,8 +5154,17 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.23</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.24</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.24 - Súly/idő összehasonlítás</div>
+            <div class="settingNote">
+                <div>- Főoldalon a súly kijelzés alatt megjelenik a mai állás összevetése a tegnapi azonos időponttal.</div>
+                <div>- Mutatja, tegnap ilyenkor mennyi kg-nál jártál, és mennyi az eltérés.</div>
+                <div>- Rejtett módban az összehasonlítás pontos számai is takarva maradnak.</div>
+            </div>
         </div>
 
         <div class="menuCard">
@@ -5704,6 +5883,7 @@ function deleteAllData(){
 updateHiddenModeUI();
 updateKartonModeUI();
 render();
+setInterval(renderYesterdayComparison, 60000);
 
 if("serviceWorker" in navigator){
     navigator.serviceWorker.register("./sw.js");
