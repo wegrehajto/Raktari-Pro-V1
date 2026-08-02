@@ -806,7 +806,7 @@ button:active{
 }
 
 
-/* PRO UI V2.24 */
+/* PRO UI V2.26 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1306,6 +1306,85 @@ button:active{
     cursor:pointer;
 }
 
+
+/* ADMIN HISTORY V2.26 */
+.adminHistoryFilters{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+}
+.adminHistoryFilters .full{
+    grid-column:1 / -1;
+}
+.adminHistorySummary{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin:10px 0;
+}
+.adminHistoryDay{
+    background:#0f172a;
+    border:1px solid rgba(148,163,184,.18);
+    border-radius:16px;
+    margin-top:9px;
+    overflow:hidden;
+}
+.adminHistoryDay > summary{
+    list-style:none;
+    cursor:pointer;
+    padding:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-weight:950;
+}
+.adminHistoryDay > summary::-webkit-details-marker{display:none;}
+.adminHistoryDay > summary::after{
+    content:"⌄";
+    color:var(--muted);
+    transition:.16s ease;
+}
+.adminHistoryDay[open] > summary::after{transform:rotate(180deg);}
+.adminHistoryDayTitle{min-width:0;}
+.adminHistoryDayTitle .date{font-size:15px;font-weight:950;}
+.adminHistoryDayTitle .small{margin-top:2px;}
+.adminHistoryDayTotal{
+    flex:0 0 auto;
+    text-align:right;
+    font-size:13px;
+    color:#bbf7d0;
+    font-weight:950;
+}
+.adminHistoryDayBody{padding:0 10px 10px;}
+.adminHistoryRow{
+    background:linear-gradient(180deg,#182233,#111827);
+    border:1px solid rgba(148,163,184,.14);
+    border-radius:14px;
+    padding:10px;
+    margin-top:7px;
+}
+.adminHistoryMain{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.adminHistoryName{font-weight:950;min-width:0;}
+.adminHistoryScore{font-weight:950;color:#bbf7d0;white-space:nowrap;}
+.adminHistoryMeta{
+    margin-top:5px;
+    color:#94a3b8;
+    font-size:12px;
+    font-weight:750;
+    line-height:1.45;
+}
+@media(max-width:420px){
+    .adminHistoryFilters{grid-template-columns:1fr;}
+    .adminHistoryFilters .full{grid-column:auto;}
+}
+
 /* ADMIN */
 .adminSummaryGrid{
     display:grid;
@@ -1426,7 +1505,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.24 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.26 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -1497,6 +1576,7 @@ let onlineSettings = { online_standings_hidden:false };
 let chatRefreshTimer = null;
 let chatUiNotice = "";
 let chatUiNoticeType = "";
+let adminHistoryState = {dateFrom:"", dateTo:"", userId:""};
 
 if(!data || typeof data !== "object" || Array.isArray(data)){
     data = {};
@@ -2136,7 +2216,7 @@ function renderInputHistory(){
         return;
     }
 
-    const lastFive = entries.slice(0,5).map(function(e){
+    const historyHtml = entries.map(function(e){
         const is700 = Number(e.suly || 0) > HETSZAZAS_LIMIT;
         const kartonText = e.kartonMod ? ("beírt karton: " + showNumber(e.karton)) : ("becsült karton: " + showApprox(e.szamoltKarton));
 
@@ -2158,11 +2238,11 @@ function renderInputHistory(){
             <div class="historyListHeader">
                 <div>
                     <div class="menuCardTitle">🧾 Beviteli előzmény</div>
-                    <div class="small">Mai utolsó ${fmt(Math.min(entries.length,5))} hozzáadás</div>
+                    <div class="small">Mai összes ${fmt(entries.length)} hozzáadás</div>
                 </div>
                 <button class="undoBtn" onclick="undoLastInput()">↩️ Vissza</button>
             </div>
-            ${lastFive}
+            ${historyHtml}
         </div>
     `;
 }
@@ -4728,6 +4808,7 @@ async function refreshAdminDashboard(showMsg){
         }
 
         box.innerHTML = renderAdminDashboard(result);
+        setTimeout(function(){ refreshAdminHistory(false); }, 30);
         if(showMsg) setAdminMessage("Admin adatok frissítve.", "ok");
     }
     catch(e){
@@ -4800,6 +4881,8 @@ function renderAdminDashboard(result){
             ${renderAdminDailyRows(daily)}
         </div>
 
+        ${renderAdminHistoryCard(users)}
+
         <div class="menuCard">
             <div class="menuCardTitle">📅 Havi összesítés - admin nézet</div>
             <div class="settingNote">Rendezés: tétel + súly alapján.</div>
@@ -4811,6 +4894,184 @@ function renderAdminDashboard(result){
             <div class="settingNote">PIN csere, átnevezés, admin jel, tiltás/engedélyezés, teljes törlés.</div>
             ${renderAdminUsers(users)}
         </div>
+    `;
+}
+
+
+function getAdminHistoryDefaultFrom(){
+    const todayKey = getTodayKey();
+    return todayKey.slice(0, 8) + "01";
+}
+
+function getAdminHistoryDefaultTo(){
+    return getTodayKey();
+}
+
+function renderAdminHistoryCard(users){
+    const dateFrom = adminHistoryState.dateFrom || getAdminHistoryDefaultFrom();
+    const dateTo = adminHistoryState.dateTo || getAdminHistoryDefaultTo();
+    const selectedUser = adminHistoryState.userId || "";
+    const options = [`<option value="">Minden felhasználó</option>`].concat((users || []).map(function(u){
+        const selected = String(u.user_id || "") === String(selectedUser) ? " selected" : "";
+        return `<option value="${escapeHtml(u.user_id || "")}"${selected}>${escapeHtml(u.name || "Ismeretlen")}</option>`;
+    })).join("");
+
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">🕘 Visszamenőleges szedések</div>
+            <div class="settingNote">Itt látod, hogy ki melyik napon mennyi tételt, súlyt és egységet szedett. Alapból az aktuális hónapot tölti be.</div>
+            <div class="adminHistoryFilters">
+                <input id="adminHistoryFrom" class="settingInput" type="date" value="${escapeHtml(dateFrom)}" aria-label="Kezdő dátum">
+                <input id="adminHistoryTo" class="settingInput" type="date" value="${escapeHtml(dateTo)}" aria-label="Záró dátum">
+                <select id="adminHistoryUser" class="settingInput full" aria-label="Felhasználó">${options}</select>
+                <button class="settingBtn active full" onclick="refreshAdminHistory(true)">🔎 Előzmények lekérése</button>
+            </div>
+            <div id="adminHistoryMessage"></div>
+            <div id="adminHistoryResults"><div class="empty">Visszamenőleges adatok betöltése...</div></div>
+        </div>
+    `;
+}
+
+function setAdminHistoryMessage(text, type){
+    const box = document.getElementById("adminHistoryMessage");
+    if(!box) return;
+    box.innerHTML = text ? `<div class="settingNote"><span class="onlineStatusPill ${type || ""}">${escapeHtml(text)}</span></div>` : "";
+}
+
+function formatAdminHistoryDate(value){
+    if(!value) return "Ismeretlen dátum";
+    try{
+        const parts = String(value).split("-");
+        if(parts.length === 3){
+            return `${parts[0]}. ${parts[1]}. ${parts[2]}.`;
+        }
+        return String(value);
+    }
+    catch(e){
+        return String(value || "");
+    }
+}
+
+function formatAdminHistoryTime(value){
+    if(!value) return "ismeretlen idő";
+    try{
+        return new Date(value).toLocaleTimeString("hu-HU", {hour:"2-digit", minute:"2-digit"});
+    }
+    catch(e){
+        return "ismeretlen idő";
+    }
+}
+
+async function refreshAdminHistory(showMsg){
+    const box = document.getElementById("adminHistoryResults");
+    if(!box || !adminSession || !adminSession.token) return;
+
+    const fromEl = document.getElementById("adminHistoryFrom");
+    const toEl = document.getElementById("adminHistoryTo");
+    const userEl = document.getElementById("adminHistoryUser");
+    const dateFrom = fromEl && fromEl.value ? fromEl.value : getAdminHistoryDefaultFrom();
+    const dateTo = toEl && toEl.value ? toEl.value : getAdminHistoryDefaultTo();
+    const userId = userEl && userEl.value ? userEl.value : "";
+
+    if(dateFrom > dateTo){
+        setAdminHistoryMessage("A kezdő dátum nem lehet későbbi a záró dátumnál.", "bad");
+        return;
+    }
+
+    adminHistoryState = {dateFrom:dateFrom, dateTo:dateTo, userId:userId};
+    box.innerHTML = `<div class="empty">Előzmények betöltése...</div>`;
+    setAdminHistoryMessage("", "");
+
+    try{
+        const result = await supabaseRpc("sv_admin_get_history", {
+            p_token:getAdminToken(),
+            p_date_from:dateFrom,
+            p_date_to:dateTo,
+            p_user_id:userId || null
+        });
+
+        if(!result || result.ok === false){
+            throw new Error(result && result.error ? result.error : "A visszamenőleges adatok nem elérhetők.");
+        }
+
+        box.innerHTML = renderAdminHistoryResults(result);
+        if(showMsg) setAdminHistoryMessage("Előzmények frissítve.", "ok");
+    }
+    catch(e){
+        const msg = e.message || "A visszamenőleges adatok nem elérhetők.";
+        box.innerHTML = `<div class="empty">Előzmények betöltési hiba:<br>${escapeHtml(msg)}</div>`;
+        setAdminHistoryMessage(msg, "bad");
+    }
+}
+
+function renderAdminHistoryResults(result){
+    const rows = Array.isArray(result.rows) ? result.rows : [];
+    const summary = result.summary || {};
+
+    if(!rows.length){
+        return `<div class="empty">A kiválasztott időszakban nincs rögzített online szedés.</div>`;
+    }
+
+    const grouped = {};
+    rows.forEach(function(r){
+        const key = r.work_date || "ismeretlen";
+        if(!grouped[key]) grouped[key] = [];
+        grouped[key].push(r);
+    });
+
+    const dates = Object.keys(grouped).sort().reverse();
+    const dayBlocks = dates.map(function(dateKey, index){
+        const dayRows = grouped[dateKey];
+        const dayTetel = dayRows.reduce((sum, r) => sum + Number(r.tetel || 0), 0);
+        const daySuly = dayRows.reduce((sum, r) => sum + Number(r.suly || 0), 0);
+        const dayScore = dayRows.reduce((sum, r) => sum + Number(r.score || (Number(r.tetel || 0) + Number(r.suly || 0))), 0);
+        const peopleCount = new Set(dayRows.map(r => r.user_id)).size;
+
+        const rowHtml = dayRows.map(function(r){
+            const sourceFinal = r.source === "final";
+            const status = sourceFinal
+                ? `<span class="onlineStatusPill ok">lezárt</span>`
+                : `<span class="onlineStatusPill warn">csak élő adat</span>`;
+            const eventLabel = sourceFinal ? "Lezárva" : "Frissítve";
+            const score = Number(r.score || (Number(r.tetel || 0) + Number(r.suly || 0)));
+            return `
+                <div class="adminHistoryRow">
+                    <div class="adminHistoryMain">
+                        <div class="adminHistoryName">${fmt(r.day_rank || 0)}. ${renderNameWithAdminBadge(r.name || "Ismeretlen", isAdminRow(r))}</div>
+                        <div class="adminHistoryScore">${fmt(score)} egység</div>
+                    </div>
+                    <div class="adminHistoryMeta">
+                        ${status} · ${fmt(r.tetel || 0)} tétel · ${fmt(r.suly || 0)} kg · ${fmt(r.karton || 0)} karton · 700-as: ${fmt(r.seven_hundreds || 0)}<br>
+                        ${eventLabel}: ${formatAdminHistoryTime(r.event_at)}
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        return `
+            <details class="adminHistoryDay" ${index === 0 ? "open" : ""}>
+                <summary>
+                    <div class="adminHistoryDayTitle">
+                        <div class="date">${formatAdminHistoryDate(dateKey)}</div>
+                        <div class="small">${fmt(peopleCount)} ember · ${fmt(dayTetel)} tétel · ${fmt(daySuly)} kg</div>
+                    </div>
+                    <div class="adminHistoryDayTotal">${fmt(dayScore)} egység</div>
+                </summary>
+                <div class="adminHistoryDayBody">${rowHtml}</div>
+            </details>
+        `;
+    }).join("");
+
+    return `
+        <div class="adminHistorySummary">
+            <div class="adminSummaryBox"><div class="label">Munkanap</div><div class="value">${fmt(summary.days_count || dates.length)}</div></div>
+            <div class="adminSummaryBox"><div class="label">Ember</div><div class="value">${fmt(summary.users_count || 0)}</div></div>
+            <div class="adminSummaryBox"><div class="label">Összes tétel</div><div class="value">${fmt(summary.total_tetel || 0)}</div></div>
+            <div class="adminSummaryBox"><div class="label">Összes súly</div><div class="value">${fmt(summary.total_suly || 0)} kg</div></div>
+            <div class="adminSummaryBox"><div class="label">Összes egység</div><div class="value">${fmt(summary.total_score || 0)}</div></div>
+            <div class="adminSummaryBox"><div class="label">700-as</div><div class="value">${fmt(summary.total_seven_hundreds || 0)}</div></div>
+        </div>
+        ${dayBlocks}
     `;
 }
 
@@ -5066,7 +5327,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.24</span>
+                <span class="onlineStatusPill ok">V2.26</span>
             </div>
         </div>
 
@@ -5154,8 +5415,26 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.24</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.26</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.26 - Admin visszamenőleges szedések</div>
+            <div class="settingNote">
+                <div>- Adminból dátumtartomány és felhasználó alapján visszanézhető, ki melyik napon mennyit szedett.</div>
+                <div>- Napokra összecsukva látszik a tétel, súly, egység, karton és 700-as érték.</div>
+                <div>- A lezárt és a csak élőként megmaradt online adatok külön jelölést kapnak.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.25 - Teljes beviteli előzmény</div>
+            <div class="settingNote">
+                <div>- A főoldali beviteli előzmény már nem csak az utolsó 5 hozzáadást mutatja.</div>
+                <div>- A mai nap összes rögzített szedése időrendben visszanézhető.</div>
+                <div>- A Vissza gomb továbbra is mindig a legutóbbi hozzáadást vonja vissza.</div>
+            </div>
         </div>
 
         <div class="menuCard">
