@@ -575,6 +575,28 @@ button:active{
     white-space:nowrap;
 }
 
+.inputHistoryScroll{
+    max-height:320px;
+    overflow-y:auto;
+    padding-right:4px;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:#475569 transparent;
+}
+
+.inputHistoryScroll::-webkit-scrollbar{
+    width:6px;
+}
+
+.inputHistoryScroll::-webkit-scrollbar-thumb{
+    background:#475569;
+    border-radius:999px;
+}
+
+.inputHistoryScroll::-webkit-scrollbar-track{
+    background:transparent;
+}
+
 .inputEntry{
     background:#0f172a;
     border:1px solid rgba(148,163,184,.12);
@@ -797,7 +819,7 @@ button:active{
 }
 
 
-/* PRO UI V2.27 */
+/* PRO UI V2.28 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1298,7 +1320,7 @@ button:active{
 }
 
 
-/* ADMIN HISTORY V2.27 */
+/* ADMIN HISTORY V2.28 */
 .adminHistoryFilters{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1496,7 +1518,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.27 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.28 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -2233,7 +2255,9 @@ function renderInputHistory(){
                 </div>
                 <button class="undoBtn" onclick="undoLastInput()">↩️ Vissza</button>
             </div>
-            ${historyHtml}
+            <div class="inputHistoryScroll" aria-label="Mai beviteli előzmények">
+                ${historyHtml}
+            </div>
         </div>
     `;
 }
@@ -3743,11 +3767,10 @@ function renderAtlagok(){
 
             <div class="menuCard moneyCard">
                 <div class="menuCardTitle">💰 Várható becsült fizetés</div>
-                <div class="avgQuickGrid">
-                    <div class="avgQuickBox"><div class="avgQuickLabel">Mai eddigi</div><div class="avgQuickValue goodValue">${showFt(maiFizetes)}</div></div>
-                    <div class="avgQuickBox"><div class="avgQuickLabel">Mai ~egység</div><div class="avgQuickValue">${showNumber(maiOsszegyseg)}</div></div>
+                <div class="avgQuickGrid" style="grid-template-columns:1fr;">
+                    <div class="avgQuickBox"><div class="avgQuickLabel">Aktuális hónap</div><div class="avgQuickValue goodValue">${showFt(maiFizetes)}</div></div>
                 </div>
-                <div class="avgCompactNote">A számítás becslés: ~összegység × 1,64 Ft.</div>
+                <div class="avgCompactNote">Jelenleg csak a mai, még le nem zárt adat számítható. Becslés: ~összegység × 1,64 Ft.</div>
             </div>
 
             ${vacationEmptyHtml}
@@ -3788,6 +3811,7 @@ function renderAtlagok(){
         return m.honap === currentMonthKey;
     });
     const currentMonthClosedOsszegyseg = currentMonthData ? Number(currentMonthData.osszegyseg || 0) : 0;
+    const currentMonthClosedFizetes = getBecsultFizetes(currentMonthClosedOsszegyseg);
     const currentMonthVacationFizetes = getVacationPayForMonth(vacationMonthStats, currentMonthKey);
     const currentMonthWithTodayOsszegyseg = currentMonthClosedOsszegyseg + maiOsszegyseg;
     const currentMonthWorkWithTodayFizetes = getBecsultFizetes(currentMonthWithTodayOsszegyseg);
@@ -3898,14 +3922,14 @@ function renderAtlagok(){
 
         <div class="menuCard moneyCard">
             <div class="menuCardTitle">💰 Várható becsült fizetés</div>
-            <div class="avgQuickGrid">
-                <div class="avgQuickBox"><div class="avgQuickLabel">Aktuális hónap</div><div class="avgQuickValue goodValue">${showFt(currentMonthWithTodayFizetes)}</div></div>
-                <div class="avgQuickBox"><div class="avgQuickLabel">Összes várható</div><div class="avgQuickValue goodValue">${showFt(totalFizetesWithVacation)}</div></div>
+            <div class="avgQuickGrid" style="grid-template-columns:1fr;">
+                <div class="avgQuickBox"><div class="avgQuickLabel">${getMonthLabel(currentMonthKey)}</div><div class="avgQuickValue goodValue">${showFt(currentMonthWithTodayFizetes)}</div></div>
             </div>
-            <div class="menuLine moneyLine"><span>Munkából lezárt várható</span><b>${showFt(totalFizetes)}</b></div>
-            <div class="menuLine moneyLine"><span>Szabadság becsült összesen</span><b>${showFt(totalVacationFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Munkából lezárt várható</span><b>${showFt(currentMonthClosedFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Mai még le nem zárt</span><b>${showFt(maiFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(currentMonthVacationFizetes)}</b></div>
             <div class="menuLine"><span>Szorzó</span><b>${showRate()}</b></div>
-            <div class="avgCompactNote">Becslés: ~összegység × 1,64 Ft. Az aktuális hónap a lezárt napokat, a mai még le nem zárt adatot és a rögzített szabadságokat is beleszámolja.</div>
+            <div class="avgCompactNote">Csak az aktuális hónap becslése látszik: lezárt munkanapok + mai adat + az adott havi szabadság.</div>
         </div>
 
         <div class="menuCard">
@@ -5356,7 +5380,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.27</span>
+                <span class="onlineStatusPill ok">V2.28</span>
             </div>
         </div>
 
@@ -5444,8 +5468,15 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.27</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.28</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.28 - Görgethető előzmény és havi fizetés</div>
+            <div>- A főoldali teljes beviteli előzmény egy fix magasságú, görgethető panelbe került.</div>
+            <div>- A várható becsült fizetés már kizárólag az aktuális hónapot mutatja.</div>
+            <div>- A munkából lezárt várható összeg is csak a jelenlegi hónap lezárt napjaiból számol.</div>
         </div>
 
         <div class="menuCard">
