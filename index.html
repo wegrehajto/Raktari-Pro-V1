@@ -244,62 +244,53 @@ button:active{
     border:1px solid rgba(148,163,184,.18);
     color:#d1d5db;
     font-size:12px;
-    font-weight:800;
-    line-height:1.35;
+    font-weight:850;
+    line-height:1.45;
     display:none;
     box-shadow:0 10px 22px rgba(0,0,0,.22);
 }
 
-.yesterdayCompareBox .compareMain{
+.yesterdayCompareBox .compareLine{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:8px;
+    gap:10px;
 }
 
-.yesterdayCompareBox .compareLabel{
+.yesterdayCompareBox .compareLine + .compareLine{
+    margin-top:4px;
+    padding-top:4px;
+    border-top:1px solid rgba(148,163,184,.10);
+}
+
+.yesterdayCompareBox .compareTitle{
     color:#94a3b8;
     font-size:11px;
     font-weight:900;
-    text-transform:uppercase;
-    letter-spacing:.45px;
 }
 
-.yesterdayCompareBox .compareValue{
+.yesterdayCompareBox .compareNumber{
+    color:#e2e8f0;
+    font-weight:950;
+    white-space:nowrap;
+}
+
+.yesterdayCompareBox .compareNumber.plus{
+    color:#4ade80;
+}
+
+.yesterdayCompareBox .compareNumber.minus{
+    color:#f87171;
+}
+
+.yesterdayCompareBox .compareNumber.equal{
+    color:#cbd5e1;
+}
+
+.yesterdayCompareBox .forecastNumber{
     color:#f8fafc;
     font-weight:950;
-}
-
-.yesterdayCompareBox .compareDiff{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:3px 7px;
-    border-radius:999px;
-    border:1px solid rgba(148,163,184,.20);
-    background:rgba(15,23,42,.45);
-    color:#cbd5e1;
     white-space:nowrap;
-    font-size:11px;
-}
-
-.yesterdayCompareBox .compareDiff.plus{
-    color:#86efac;
-    border-color:rgba(34,197,94,.28);
-    background:rgba(22,101,52,.20);
-}
-
-.yesterdayCompareBox .compareDiff.minus{
-    color:#fca5a5;
-    border-color:rgba(239,68,68,.28);
-    background:rgba(127,29,29,.20);
-}
-
-.yesterdayCompareBox .compareSub{
-    margin-top:4px;
-    color:#94a3b8;
-    font-size:11px;
-    font-weight:750;
 }
 
 .quoteBox{
@@ -806,7 +797,7 @@ button:active{
 }
 
 
-/* PRO UI V2.26 */
+/* PRO UI V2.27 */
 .todayDashboard{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1307,7 +1298,7 @@ button:active{
 }
 
 
-/* ADMIN HISTORY V2.26 */
+/* ADMIN HISTORY V2.27 */
 .adminHistoryFilters{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -1505,7 +1496,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.26 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.27 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -2463,6 +2454,39 @@ function getWeightAtMinute(entries, minuteLimit){
     }, 0);
 }
 
+function getFirstEntryMinute(entries){
+    const minutes = (Array.isArray(entries) ? entries : [])
+        .map(getEntryMinuteOfDay)
+        .filter(function(minute){ return minute !== null; });
+
+    return minutes.length ? Math.min.apply(null, minutes) : null;
+}
+
+function getExpectedEndWeight(todayEntries, todayWeight){
+    const firstMinute = getFirstEntryMinute(todayEntries);
+    if(firstMinute === null || todayWeight <= 0){
+        return null;
+    }
+
+    const minuteNow = getCurrentMinuteOfDay();
+    const elapsedMinutes = Math.max(0, minuteNow - firstMinute);
+
+    // Túl kevés adatból könnyen irreális becslés születne.
+    if(elapsedMinutes < 15){
+        return null;
+    }
+
+    const elapsedHours = elapsedMinutes / 60;
+    const hourlyRate = todayWeight / elapsedHours;
+    const projected = Math.round(hourlyRate * 8);
+
+    if(!Number.isFinite(projected) || projected < 0){
+        return null;
+    }
+
+    return projected;
+}
+
 function renderYesterdayComparison(){
     const box = document.getElementById("yesterdayCompareBox");
     if(!box) return;
@@ -2470,37 +2494,42 @@ function renderYesterdayComparison(){
     ensureTodayData();
 
     const currentDay = data[today] || createEmptyDay();
+    const todayEntries = Array.isArray(currentDay.bevitelek) ? currentDay.bevitelek : [];
     const yesterdayKey = addDaysToKey(today, -1);
     const yesterdayEntries = getComparisonEntriesForDate(yesterdayKey);
+    const minuteNow = getCurrentMinuteOfDay();
+    const todayWeight = Number(currentDay.suly || 0);
+    const expectedEndWeight = getExpectedEndWeight(todayEntries, todayWeight);
 
-    if(yesterdayEntries.length === 0){
-        box.style.display = "block";
-        box.innerHTML = `
-            <div class="compareMain">
-                <div><span class="compareLabel">Súly / idő</span> <span class="compareValue">${getTimeShort()}</span></div>
-                <span class="compareDiff">nincs tegnapi adat</span>
-            </div>
-            <div class="compareSub">Ha a tegnapi napnál van beviteli előzmény, itt látszik majd, tegnap ilyenkor mennyinél jártál.</div>
-        `;
-        return;
+    let yesterdayValue = "nincs adat";
+    let yesterdayClass = "equal";
+
+    if(yesterdayEntries.length > 0){
+        const yesterdayWeight = getWeightAtMinute(yesterdayEntries, minuteNow);
+        yesterdayValue = hiddenMode ? "•••• kg" : fmt(yesterdayWeight) + " kg";
+
+        if(todayWeight > yesterdayWeight){
+            yesterdayClass = "plus";
+        }
+        else if(todayWeight < yesterdayWeight){
+            yesterdayClass = "minus";
+        }
     }
 
-    const minuteNow = getCurrentMinuteOfDay();
-    const yesterdayWeight = getWeightAtMinute(yesterdayEntries, minuteNow);
-    const todayWeight = Number(currentDay.suly || 0);
-    const diff = todayWeight - yesterdayWeight;
-    const diffClass = diff > 0 ? "plus" : (diff < 0 ? "minus" : "");
-    const diffText = hiddenMode ? "eltakarva" : (diff > 0 ? "+" : "") + fmt(diff) + " kg";
-    const todayText = hiddenMode ? "•••• kg" : fmt(todayWeight) + " kg";
-    const yesterdayText = hiddenMode ? "•••• kg" : fmt(yesterdayWeight) + " kg";
+    const forecastValue = hiddenMode
+        ? "•••• kg"
+        : (expectedEndWeight === null ? "még nincs elég adat" : fmt(expectedEndWeight) + " kg");
 
     box.style.display = "block";
     box.innerHTML = `
-        <div class="compareMain">
-            <div><span class="compareLabel">Súly / idő</span> <span class="compareValue">${getTimeShort()} · ${todayText}</span></div>
-            <span class="compareDiff ${diffClass}">${diffText}</span>
+        <div class="compareLine">
+            <span class="compareTitle">Tegnap ilyenkor:</span>
+            <span class="compareNumber ${yesterdayClass}">${yesterdayValue}</span>
         </div>
-        <div class="compareSub">Tegnap ilyenkor: <b>${yesterdayText}</b></div>
+        <div class="compareLine">
+            <span class="compareTitle">Várható napvégi súly:</span>
+            <span class="forecastNumber">${forecastValue}</span>
+        </div>
     `;
 }
 
@@ -5327,7 +5356,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.26</span>
+                <span class="onlineStatusPill ok">V2.27</span>
             </div>
         </div>
 
@@ -5415,12 +5444,12 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.26</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.27</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
         <div class="menuCard">
-            <div class="menuCardTitle">V2.26 - Admin visszamenőleges szedések</div>
+            <div class="menuCardTitle">V2.27 - Admin visszamenőleges szedések</div>
             <div class="settingNote">
                 <div>- Adminból dátumtartomány és felhasználó alapján visszanézhető, ki melyik napon mennyit szedett.</div>
                 <div>- Napokra összecsukva látszik a tétel, súly, egység, karton és 700-as érték.</div>
