@@ -287,11 +287,6 @@ button:active{
     color:#cbd5e1;
 }
 
-.yesterdayCompareBox .forecastNumber{
-    color:#f8fafc;
-    font-weight:950;
-    white-space:nowrap;
-}
 
 .quoteBox{
     display:none;
@@ -619,6 +614,51 @@ button:active{
     color:var(--muted);
     line-height:1.35;
 }
+
+.inputEntryActions{
+    display:flex;
+    justify-content:flex-end;
+    gap:7px;
+    margin-top:7px;
+}
+
+.entryActionBtn{
+    width:auto;
+    padding:6px 9px;
+    border-radius:10px;
+    font-size:11px;
+    font-weight:900;
+    box-shadow:none;
+}
+
+.entryEditBtn{
+    background:#1d4ed8;
+    color:#dbeafe;
+}
+
+.entryDeleteBtn{
+    background:#7f1d1d;
+    color:#fee2e2;
+}
+
+.saveSyncStatus{
+    margin:-3px 0 12px;
+    padding:8px 11px;
+    border-radius:14px;
+    background:rgba(15,23,42,.76);
+    border:1px solid rgba(148,163,184,.16);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    font-size:11px;
+    font-weight:900;
+    color:#cbd5e1;
+}
+
+.saveSyncStatus .statusOk{ color:#4ade80; }
+.saveSyncStatus .statusWait{ color:#facc15; }
+.saveSyncStatus .statusBad{ color:#f87171; }
 
 .badge700{
     display:inline-block;
@@ -1483,6 +1523,8 @@ button:active{
 
 <div id="backupReminderBox" class="backupReminderBox"></div>
 
+<div id="saveSyncStatus" class="saveSyncStatus"></div>
+
 <button class="privacyBtn" onclick="toggleHiddenMode()" id="privacyBtn">
 🙈 Rejtett mód: KI
 </button>
@@ -1518,7 +1560,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.28 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.30 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -2242,6 +2284,10 @@ function renderInputHistory(){
                 <div class="inputEntrySub">
                     Tétel: <b>${showNumber(e.tetel)}</b> · ${kartonText} · ~Összegység: <b>${showNumber(getEntryOsszegyseg(e))}</b>
                 </div>
+                <div class="inputEntryActions">
+                    <button class="entryActionBtn entryEditBtn" onclick="editInputEntry(${Number(e.id || 0)})">✏️ Szerkesztés</button>
+                    <button class="entryActionBtn entryDeleteBtn" onclick="deleteInputEntry(${Number(e.id || 0)})">🗑️ Törlés</button>
+                </div>
             </div>
         `;
     }).join("");
@@ -2260,6 +2306,139 @@ function renderInputHistory(){
             </div>
         </div>
     `;
+}
+
+function recalculateTodayFromEntries(){
+    ensureTodayData();
+    const d = data[today];
+    const entries = getTodayInputs();
+
+    d.tetel = 0;
+    d.karton = 0;
+    d.suly = 0;
+    d.rendeles = entries.length;
+    d.hetszazas = 0;
+    d.hetszazasSzeria = 0;
+    d.hetszazasSzeriaMax = 0;
+    d.szamoltKarton = 0;
+    d.osszegyseg = 0;
+    d.hatarido6000 = null;
+    d.hatarido6000Ido = "";
+
+    let streak = 0;
+    let cumulativeWeight = 0;
+    entries.forEach(function(e){
+        const tetel = Number(e.tetel || 0);
+        const karton = Number(e.karton || 0);
+        const suly = Number(e.suly || 0);
+        const szamoltKarton = Number(e.szamoltKarton || 0);
+
+        d.tetel += tetel;
+        d.karton += karton;
+        d.suly += suly;
+        d.szamoltKarton += szamoltKarton;
+        d.osszegyseg += getEntryOsszegyseg(e);
+
+        cumulativeWeight += suly;
+        if(d.hatarido6000 === null && cumulativeWeight >= HATARIDO_SULY){
+            const minute = getEntryMinuteOfDay(e);
+            if(minute !== null){
+                d.hatarido6000 = minute <= (11 * 60);
+                d.hatarido6000Ido = String(e.ido || "");
+            }
+        }
+
+        if(suly > HETSZAZAS_LIMIT){
+            d.hetszazas += 1;
+            streak += 1;
+            d.hetszazasSzeriaMax = Math.max(d.hetszazasSzeriaMax, streak);
+        } else {
+            streak = 0;
+        }
+    });
+
+    d.hetszazasSzeria = streak;
+}
+
+function editInputEntry(entryId){
+    ensureTodayData();
+    const entries = getTodayInputs();
+    const entry = entries.find(function(e){ return Number(e.id || 0) === Number(entryId); });
+    if(!entry){
+        alert("A bejegyzés nem található.");
+        return;
+    }
+
+    const tetelText = prompt("Tétel módosítása:", String(Number(entry.tetel || 0)));
+    if(tetelText === null) return;
+    const tetel = Number(tetelText);
+    if(!Number.isFinite(tetel) || tetel <= 0 || tetel > 120){
+        alert("A tétel 1 és 120 közötti szám legyen.");
+        return;
+    }
+
+    let karton = Number(entry.karton || 0);
+    let beirtKarton = Number(entry.beirtKarton || entry.karton || 0);
+    if(entry.kartonMod){
+        const kartonText = prompt("Karton módosítása:", String(karton));
+        if(kartonText === null) return;
+        karton = Number(kartonText);
+        if(!Number.isFinite(karton) || karton < 0){
+            alert("A karton nem lehet negatív.");
+            return;
+        }
+        beirtKarton = karton;
+    }
+
+    const sulyText = prompt("Súly módosítása (kg):", String(Number(entry.suly || 0)));
+    if(sulyText === null) return;
+    const suly = Number(sulyText);
+    if(!Number.isFinite(suly) || suly < 0 || suly > 5000){
+        alert("Adj meg érvényes súlyt.");
+        return;
+    }
+
+    const szamoltKarton = getSzamoltKarton(tetel, karton, Boolean(entry.kartonMod));
+    entry.tetel = tetel;
+    entry.karton = entry.kartonMod ? karton : 0;
+    entry.beirtKarton = beirtKarton;
+    entry.suly = suly;
+    entry.szamoltKarton = szamoltKarton;
+    entry.osszegyseg = suly + tetel + szamoltKarton;
+    entry.hetszazas = suly > HETSZAZAS_LIMIT;
+    entry.editedAt = new Date().toISOString();
+
+    recalculateTodayFromEntries();
+    saveData();
+    markOnlineSyncPending();
+    render();
+    refreshActiveMenu();
+    scheduleOnlineLiveUpdate();
+}
+
+function deleteInputEntry(entryId){
+    ensureTodayData();
+    const entries = getTodayInputs();
+    const index = entries.findIndex(function(e){ return Number(e.id || 0) === Number(entryId); });
+    if(index < 0){
+        alert("A bejegyzés nem található.");
+        return;
+    }
+
+    const entry = entries[index];
+    const message = hiddenMode
+        ? "Biztosan törlöd ezt a bejegyzést?"
+        : "Biztosan törlöd ezt a bejegyzést?\n\n" +
+          fmt(entry.tetel) + " tétel · " + fmt(entry.suly) + " kg";
+    if(!confirm(message)) return;
+
+    entries.splice(index, 1);
+    recalculateTodayFromEntries();
+    saveData();
+    markOnlineSyncPending();
+    render();
+    refreshActiveMenu();
+    scheduleOnlineLiveUpdate();
 }
 
 function undoLastInput(){
@@ -2282,36 +2461,9 @@ function undoLastInput(){
     if(!confirm(msg)) return;
 
     entries.pop();
-
-    const d = data[today];
-    d.tetel = Math.max(0, Number(d.tetel || 0) - Number(last.tetel || 0));
-    d.karton = Math.max(0, Number(d.karton || 0) - Number(last.karton || 0));
-    d.suly = Math.max(0, Number(d.suly || 0) - Number(last.suly || 0));
-    d.rendeles = Math.max(0, Number(d.rendeles || 0) - 1);
-    d.szamoltKarton = Math.max(0, Number(d.szamoltKarton || 0) - Number(last.szamoltKarton || 0));
-    d.osszegyseg = Math.max(0, Number(d.osszegyseg || 0) - getEntryOsszegyseg(last));
-
-    if(Number(last.suly || 0) > HETSZAZAS_LIMIT){
-        d.hetszazas = Math.max(0, Number(d.hetszazas || 0) - 1);
-    }
-
-    let streak = 0;
-    entries.forEach(function(e){
-        if(Number(e.suly || 0) > HETSZAZAS_LIMIT){
-            streak++;
-        }
-        else{
-            streak = 0;
-        }
-    });
-    d.hetszazasSzeria = streak;
-
-    if(Number(d.suly || 0) < HATARIDO_SULY){
-        d.hatarido6000 = null;
-        d.hatarido6000Ido = "";
-    }
-
+    recalculateTodayFromEntries();
     saveData();
+    markOnlineSyncPending();
     render();
     refreshActiveMenu();
     scheduleOnlineLiveUpdate();
@@ -2406,6 +2558,7 @@ function add(){
     }
 
     saveData();
+    markOnlineSyncPending();
 
     tInput.value = "";
     kInput.value = "";
@@ -2486,31 +2639,6 @@ function getFirstEntryMinute(entries){
     return minutes.length ? Math.min.apply(null, minutes) : null;
 }
 
-function getExpectedEndWeight(todayEntries, todayWeight){
-    const firstMinute = getFirstEntryMinute(todayEntries);
-    if(firstMinute === null || todayWeight <= 0){
-        return null;
-    }
-
-    const minuteNow = getCurrentMinuteOfDay();
-    const elapsedMinutes = Math.max(0, minuteNow - firstMinute);
-
-    // Túl kevés adatból könnyen irreális becslés születne.
-    if(elapsedMinutes < 15){
-        return null;
-    }
-
-    const elapsedHours = elapsedMinutes / 60;
-    const hourlyRate = todayWeight / elapsedHours;
-    const projected = Math.round(hourlyRate * 8);
-
-    if(!Number.isFinite(projected) || projected < 0){
-        return null;
-    }
-
-    return projected;
-}
-
 function renderYesterdayComparison(){
     const box = document.getElementById("yesterdayCompareBox");
     if(!box) return;
@@ -2518,12 +2646,10 @@ function renderYesterdayComparison(){
     ensureTodayData();
 
     const currentDay = data[today] || createEmptyDay();
-    const todayEntries = Array.isArray(currentDay.bevitelek) ? currentDay.bevitelek : [];
     const yesterdayKey = addDaysToKey(today, -1);
     const yesterdayEntries = getComparisonEntriesForDate(yesterdayKey);
     const minuteNow = getCurrentMinuteOfDay();
     const todayWeight = Number(currentDay.suly || 0);
-    const expectedEndWeight = getExpectedEndWeight(todayEntries, todayWeight);
 
     let yesterdayValue = "nincs adat";
     let yesterdayClass = "equal";
@@ -2540,23 +2666,14 @@ function renderYesterdayComparison(){
         }
     }
 
-    const forecastValue = hiddenMode
-        ? "•••• kg"
-        : (expectedEndWeight === null ? "még nincs elég adat" : fmt(expectedEndWeight) + " kg");
-
     box.style.display = "block";
     box.innerHTML = `
         <div class="compareLine">
             <span class="compareTitle">Tegnap ilyenkor:</span>
             <span class="compareNumber ${yesterdayClass}">${yesterdayValue}</span>
         </div>
-        <div class="compareLine">
-            <span class="compareTitle">Várható napvégi súly:</span>
-            <span class="forecastNumber">${forecastValue}</span>
-        </div>
     `;
 }
-
 function render(){
     ensureTodayData();
 
@@ -2567,43 +2684,40 @@ function render(){
     const banner = document.getElementById("weightBanner");
 
     if(banner){
-        // Rejtett módban csak a számot takarjuk el,
-        // a színjelzés marad, hogy lásd a 10 000 / 13 000 kg határt.
         const fireIcon = Number(d.hetszazasSzeria || 0) > 2 ? " 🔥" : "";
         banner.innerText = (hiddenMode ? "•••• kg" : fmt(d.suly) + " kg") + fireIcon;
 
         banner.style.textShadow = "none";
         banner.style.boxShadow = "0 12px 28px rgba(0,0,0,.35)";
 
-        if(d.suly < 10000){
-            // 10 tonna alatt: alap piros jelzés
+        if(hiddenMode){
+            // Rejtett módban a súlyszint színe sem árulhatja el, hol jársz.
+            banner.style.background = "linear-gradient(135deg, #1f2937, #334155)";
+            banner.style.color = "#f8fafc";
+        }
+        else if(d.suly < 10000){
             banner.style.background = "linear-gradient(135deg, #991b1b, #ef4444)";
             banner.style.color = "#fff";
         }
         else if(d.suly < 13000){
-            // 10 000 kg: bronz
             banner.style.background = "linear-gradient(135deg, #7c2d12, #b45309, #d97706)";
             banner.style.color = "#fff7ed";
             banner.style.textShadow = "0 1px 2px rgba(0,0,0,.45)";
         }
         else if(d.suly < 15000){
-            // 13 000 kg: ezüst
             banner.style.background = "linear-gradient(135deg, #64748b, #cbd5e1, #94a3b8)";
             banner.style.color = "#0f172a";
         }
         else if(d.suly < 18000){
-            // 15 000 kg: arany
             banner.style.background = "linear-gradient(135deg, #a16207, #facc15, #f59e0b)";
             banner.style.color = "#111827";
         }
         else if(d.suly < 20000){
-            // 18 000 kg: platina
             banner.style.background = "linear-gradient(135deg, #334155, #e5e7eb, #94a3b8)";
             banner.style.color = "#0f172a";
             banner.style.boxShadow = "0 12px 30px rgba(226,232,240,.22), 0 12px 28px rgba(0,0,0,.35)";
         }
         else{
-            // 20 000 kg: gyémánt
             banner.style.background = "linear-gradient(135deg, #0891b2, #67e8f9, #2563eb, #a5f3fc)";
             banner.style.color = "#082f49";
             banner.style.boxShadow = "0 12px 34px rgba(103,232,249,.35), 0 12px 28px rgba(0,0,0,.35)";
@@ -2622,6 +2736,7 @@ function render(){
 
     renderInputHistory();
     renderBackupReminderBox();
+    renderSaveSyncStatus();
 }
 
 async function closePicking(){
@@ -4013,8 +4128,52 @@ function getCurrentOnlinePayload(){
     };
 }
 
+function markOnlineSyncPending(){
+    if(!onlineUser || !onlineUser.user_id) return;
+    localStorage.setItem("pendingOnlineSync", "1");
+    renderSaveSyncStatus();
+}
+
+function renderSaveSyncStatus(){
+    const box = document.getElementById("saveSyncStatus");
+    if(!box) return;
+
+    const localText = '<span class="statusOk">● Helyben mentve</span>';
+    let onlineText = '<span>Online mód nincs beállítva</span>';
+
+    if(onlineUser && onlineUser.user_id){
+        const pending = localStorage.getItem("pendingOnlineSync") === "1";
+        const error = localStorage.getItem("lastOnlineSyncError") || "";
+        const syncedAt = localStorage.getItem("lastOnlineSyncAt") || "";
+
+        if(!navigator.onLine){
+            onlineText = '<span class="statusWait">● Nincs internet · szinkronra vár</span>';
+        }
+        else if(pending || error){
+            onlineText = '<span class="statusWait">● Online frissítésre vár</span>';
+        }
+        else if(syncedAt){
+            const d = new Date(syncedAt);
+            onlineText = '<span class="statusOk">● Online szinkronizálva ' + d.toLocaleTimeString("hu-HU", {hour:"2-digit", minute:"2-digit"}) + '</span>';
+        }
+        else{
+            onlineText = '<span class="statusWait">● Online szinkron még nem történt</span>';
+        }
+    }
+
+    box.innerHTML = localText + onlineText;
+}
+
+function retryPendingOnlineSync(){
+    if(localStorage.getItem("pendingOnlineSync") === "1" && onlineUser && onlineUser.user_id && navigator.onLine){
+        updateOnlineLive(true);
+    }
+    renderSaveSyncStatus();
+}
+
 function scheduleOnlineLiveUpdate(){
     if(!onlineUser || !onlineUser.user_id) return;
+    markOnlineSyncPending();
 
     clearTimeout(onlineSyncTimer);
     onlineSyncTimer = setTimeout(function(){
@@ -4034,6 +4193,8 @@ async function updateOnlineLive(silent){
 
         localStorage.setItem("lastOnlineSyncAt", new Date().toISOString());
         localStorage.removeItem("lastOnlineSyncError");
+        localStorage.removeItem("pendingOnlineSync");
+        renderSaveSyncStatus();
 
         if(!silent){
             setOnlineMessage("Élő állás frissítve", "ok");
@@ -4044,6 +4205,8 @@ async function updateOnlineLive(silent){
     }
     catch(e){
         localStorage.setItem("lastOnlineSyncError", e.message || "Online hiba");
+        localStorage.setItem("pendingOnlineSync", "1");
+        renderSaveSyncStatus();
 
         if(!silent){
             setOnlineMessage("Online hiba: " + (e.message || "nem sikerült frissíteni"), "bad");
@@ -5468,10 +5631,26 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.28</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.30</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
         </div>
 
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.30 - Rejtett mód finomítás</div>
+            <div class="menuCardBody">
+                <div>- A várható napvégi súly becslése kikerült.</div>
+                <div>- Rejtett módban a felső súlykijelző mindig semleges színű.</div>
+                <div>- A súlyszint így színből sem következtethető ki.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.29 - Bevitelszerkesztés és szinkron</div>
+            <div class="menuCardBody">
+                <div>- Korábbi mai bevitel szerkeszthető és törölhető.</div>
+                <div>- Helyi mentés és online szinkron állapotjelző.</div>
+            </div>
+        </div>
         <div class="menuCard">
             <div class="menuCardTitle">V2.28 - Görgethető előzmény és havi fizetés</div>
             <div>- A főoldali teljes beviteli előzmény egy fix magasságú, görgethető panelbe került.</div>
@@ -6190,6 +6369,7 @@ function deleteAllData(){
     localStorage.removeItem("onlineUser");
     localStorage.removeItem("lastOnlineSyncAt");
     localStorage.removeItem("lastOnlineSyncError");
+    localStorage.removeItem("pendingOnlineSync");
     localStorage.removeItem("adminSession");
 
     data = {};
@@ -6223,6 +6403,9 @@ updateHiddenModeUI();
 updateKartonModeUI();
 render();
 setInterval(renderYesterdayComparison, 60000);
+window.addEventListener("online", retryPendingOnlineSync);
+window.addEventListener("offline", renderSaveSyncStatus);
+retryPendingOnlineSync();
 
 if("serviceWorker" in navigator){
     navigator.serviceWorker.register("./sw.js");
