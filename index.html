@@ -7,7 +7,7 @@
 <title>Súlyvadász</title>
 
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111827">
+<meta name="theme-color" content="#151719">
 
 <style>
 :root{
@@ -223,8 +223,8 @@ button:active{
     position:sticky;
     top:0;
     z-index:999;
-    background:#dc2626;
-    color:white;
+    background:linear-gradient(135deg, #25292d, #30353a);
+    color:#f1f3f5;
     text-align:center;
     font-size:20px;
     font-weight:950;
@@ -1503,6 +1503,309 @@ button:active{
     }
 }
 
+
+
+/* =========================================================
+   SÚLYVADÁSZ V2.35 — SOFT GRAPHITE FINOMÍTÁS
+   Visszafogott, alacsony kontrasztú vizuális réteg.
+   A működési logikát nem módosítja.
+   ========================================================= */
+:root{
+    --bg:#151719;
+    --panel:#191c1f;
+    --card:#1d2023;
+    --card2:#23272b;
+    --input:#181b1e;
+    --line:#30353a;
+    --text:#e1e4e7;
+    --muted:#90979e;
+    --green:#74a28d;
+    --greenDark:#253b32;
+    --red:#b46f73;
+    --redDark:#4a292c;
+    --yellow:#a5aeb7;
+    --amber:#8d98a3;
+    --amberSoft:#aab2ba;
+    --amberDark:#626d77;
+    --metal:#22262a;
+    --shadow:0 12px 30px rgba(0,0,0,.24);
+}
+
+html{ color-scheme:dark; background:#151719; }
+body{
+    background:
+        radial-gradient(circle at 10% -10%, rgba(151,160,170,.045), transparent 32%),
+        linear-gradient(180deg,#151719 0%,#171a1d 54%,#121416 100%);
+    color:var(--text);
+}
+
+.header{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(180deg,#202428 0%,#1b1e21 100%);
+    border:1px solid #30353a;
+    border-radius:14px;
+    padding:15px 15px 14px 18px;
+    box-shadow:0 10px 26px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.025);
+}
+.header::before{
+    content:"";
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:3px;
+    background:#77818b;
+    opacity:.72;
+}
+.header::after{
+    content:"SOFT GRAPHITE";
+    position:absolute;
+    right:11px; top:10px;
+    color:#737b82;
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:1.15px;
+}
+.appName{
+    color:#e4e7ea;
+    letter-spacing:-.5px;
+    text-shadow:none;
+}
+.appSub{
+    color:#858d94;
+    text-transform:uppercase;
+    letter-spacing:.7px;
+    font-size:10px;
+}
+
+.card,.stat,.menuCard,.settingsDetails{
+    background:linear-gradient(180deg,#1f2225 0%,#1b1e21 100%);
+    border:1px solid #30353a;
+    border-radius:14px;
+    box-shadow:0 7px 20px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.018);
+}
+.card{ padding:11px 12px 12px; }
+.small,.dashLabel,.avgQuickLabel,.recordLabel{
+    color:#8c949b;
+    letter-spacing:.55px;
+}
+
+input,.settingInput,.chatInput{
+    background:#181b1e;
+    border:1px solid #343a3f;
+    color:#e4e7e9;
+    border-radius:10px;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,.20);
+}
+input:focus,.settingInput:focus,.chatInput:focus{
+    border-color:#68737d;
+    box-shadow:0 0 0 3px rgba(127,140,154,.10), inset 0 2px 8px rgba(0,0,0,.20);
+}
+
+button{
+    border-radius:11px;
+    transition:transform .08s ease, filter .16s ease, border-color .16s ease, background .16s ease;
+}
+button:active{ transform:translateY(1px) scale(.995); }
+.grayBtn{
+    background:linear-gradient(180deg,#747f89 0%,#65707a 100%);
+    color:#f4f5f6;
+    border:1px solid #87919a;
+    box-shadow:0 8px 20px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.08);
+    letter-spacing:.2px;
+}
+.grayBtn:active{ filter:brightness(.96); }
+.closeDayBtn{
+    background:linear-gradient(180deg,#633c40,#533236);
+    color:#f0dddd;
+    border-color:#765055;
+    box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+.dangerBtn{
+    background:linear-gradient(180deg,#5d373b,#482a2d);
+    color:#efd9db;
+    border-color:#74494e;
+}
+.privacyBtn{
+    background:linear-gradient(180deg,#24282c,#1d2023);
+    color:#b9bec3;
+    border-color:#353a3f;
+    border-radius:11px;
+}
+.privacyBtn.active{
+    background:linear-gradient(180deg,#30363b,#292e33);
+    border-color:#4b535a;
+    color:#e0e3e5;
+}
+.settingBtn,.copyBtn,.undoBtn{
+    background:linear-gradient(180deg,#2a2f33,#22262a);
+    color:#d2d6d9;
+    border-color:#383e43;
+    border-radius:10px;
+}
+.settingBtn.active{
+    background:linear-gradient(180deg,#737d86,#646e77);
+    color:#f4f5f6;
+    border-color:#858e96;
+}
+
+.weightBanner{
+    border-radius:12px;
+    border-color:rgba(210,214,217,.11);
+    letter-spacing:.3px;
+    box-shadow:0 9px 22px rgba(0,0,0,.24);
+}
+.yesterdayCompareBox,.saveSyncStatus{
+    background:linear-gradient(180deg,#1d2023,#191c1f);
+    border-color:#30353a;
+    border-radius:11px;
+}
+/* A mentés és online szinkron tovább működik, csak a főoldali státuszsor nincs kiírva. */
+.saveSyncStatus{ display:none !important; }
+.backupReminderBox{
+    background:#202428;
+    color:#b7bdc2;
+    border-color:#373d42;
+    border-left-color:#69747e;
+    border-radius:11px;
+}
+
+.todayDashboard{ gap:8px; }
+.dashCard{
+    background:linear-gradient(145deg,#22262a,#1a1d20);
+    border-color:#30353a;
+    border-radius:13px;
+    box-shadow:0 7px 18px rgba(0,0,0,.17);
+}
+.dashCard::after{
+    width:58px; height:58px;
+    right:-19px; top:-19px;
+    background:rgba(151,160,170,.035);
+    border:1px solid rgba(180,186,192,.025);
+}
+.dashCard.primary{
+    background:linear-gradient(145deg,#292e33,#1c2023 78%);
+    border-color:#41484e;
+}
+.dashCard.primary .dashValue{ color:#c9ced2; }
+.dashValue{ color:#e1e4e7; }
+
+.inputHistoryCard{ border-color:#343a3f; }
+.inputHistoryScroll{ scrollbar-color:#59636c transparent; }
+.inputHistoryScroll::-webkit-scrollbar-thumb{ background:#59636c; }
+.inputEntry,.historyPick,.recordItem,.avgQuickBox,.archiveMini,.vacationMini{
+    background:linear-gradient(180deg,#1c1f22,#181b1e);
+    border-color:#30353a;
+    border-radius:10px;
+}
+.inputEntryTop{ color:#dfe2e4; }
+
+.bottomNav{
+    grid-template-columns:repeat(4,1fr);
+    background:rgba(22,24,26,.96);
+    border:1px solid #30353a;
+    border-radius:16px;
+    box-shadow:0 14px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.018);
+    backdrop-filter:blur(16px);
+}
+.bottomNavBtn{
+    color:#858d94;
+    border-radius:10px;
+}
+.bottomNavBtn.active{
+    background:#292e32;
+    color:#d5d9dc;
+    border-color:#3b4248;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.menuOverlay{ background:rgba(8,9,10,.78); }
+.menuPanel{
+    background:linear-gradient(180deg,#16191b,#1a1d20);
+    border-color:#30353a;
+    border-radius:16px;
+}
+.menuCardTitle,.proCardTitle{ color:#e1e4e7; }
+.menuLine{ color:#b2b8bd; border-bottom-color:#2c3135; }
+.menuLine b{ color:#e1e4e7; }
+.settingNote,.proCardSub,.onlineCompactNote{ color:#8f969d; }
+.settingsDetails > summary{ color:#d9dde0; }
+.settingsDetails > summary::after{ color:#7f8992; }
+
+.historyTotal,.scoreBubble,.proTinyPill,.atlagSectionTitle .pill{
+    background:#292e32;
+    color:#bcc2c7;
+    border-color:#3a4147;
+}
+
+.podiumCard{
+    background:linear-gradient(180deg,#1e2124,#191c1f);
+    border-color:#30353a;
+    border-radius:13px;
+    box-shadow:0 8px 20px rgba(0,0,0,.18);
+}
+.podiumCard.rank1{
+    border-color:#495158;
+    background:linear-gradient(180deg,#272c30,#1b1e21 72%);
+    box-shadow:0 9px 22px rgba(0,0,0,.20);
+}
+.onlineBoardItem,.onlineBoardItem.proRow{
+    background:linear-gradient(180deg,#1d2023,#191c1f);
+    border-color:#30353a;
+    border-radius:11px;
+}
+.onlineRank{ color:#aab1b7; }
+.scoreBubble{ color:#c6cbd0; }
+.adminBadge{
+    background:#30363b;
+    color:#cbd0d4;
+    border:1px solid #444b51;
+}
+
+.chatCard{ border-color:#343a3f; }
+.chatMessage{
+    background:linear-gradient(180deg,#1d2023,#191c1f);
+    border-color:#30353a;
+    border-radius:11px;
+}
+.chatMessage.mine{
+    background:linear-gradient(135deg,#252a2e,#1b1e21 72%);
+    border-color:#41484e;
+}
+.chatMessage.adminMsg{ border-color:#4a5157; }
+.chatMsgName{ color:#e0e3e5; }
+
+.onlineStatusPill.ok{
+    background:rgba(116,162,141,.10);
+    color:#9fc0b0;
+    border:1px solid rgba(116,162,141,.20);
+}
+.onlineStatusPill.warn{
+    background:#292e32;
+    color:#bcc2c7;
+    border:1px solid #3b4248;
+}
+
+.recordCard,.vacationCard,.archiveCard{ border-color:#33393e; }
+.recordValue,.avgQuickValue{ color:#e0e3e5; }
+.avgQuickValue.goodValue{ color:#9fc0b0; }
+.evalBadge{
+    background:rgba(116,162,141,.08);
+    color:#9fc0b0;
+    border-color:rgba(116,162,141,.18);
+}
+.vacationTag{
+    background:#292e32;
+    color:#bcc2c7;
+    border-color:#3a4147;
+}
+
+.creatorFooter{ color:#777f86; opacity:.82; letter-spacing:.15px; }
+
+@media (max-width:390px){
+    .header::after{ display:none; }
+    .appName{ font-size:21px; }
+}
+
 </style>
 </head>
 
@@ -1511,7 +1814,7 @@ button:active{
 <div class="header">
     <div class="brandBlock">
         <div class="appName">⚖️ Súlyvadász</div>
-        <div class="appSub">Performance Tracker · online verseny</div>
+        <div class="appSub">Performance Tracker</div>
     </div>
 </div>
 
@@ -1560,7 +1863,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.30 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.35 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -1581,7 +1884,6 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 
 <nav class="bottomNav" aria-label="Alsó navigáció">
     <button class="bottomNavBtn active" data-nav="szedes" onclick="navigateApp('szedes')"><span>📦</span><small>Szedés</small></button>
-    <button class="bottomNavBtn" data-nav="online" onclick="navigateApp('online')"><span>🏆</span><small>Online</small></button>
     <button class="bottomNavBtn" data-nav="atlagok" onclick="navigateApp('atlagok')"><span>📊</span><small>Átlagok</small></button>
     <button class="bottomNavBtn" data-nav="beallitasok" onclick="navigateApp('beallitasok')"><span>⚙️</span><small>Beállítás</small></button>
     <button class="bottomNavBtn" data-nav="admin" onclick="navigateApp('admin')"><span>🛡️</span><small>Admin</small></button>
@@ -2696,8 +2998,9 @@ function render(){
             banner.style.color = "#f8fafc";
         }
         else if(d.suly < 10000){
-            banner.style.background = "linear-gradient(135deg, #991b1b, #ef4444)";
-            banner.style.color = "#fff";
+            // 10 000 kg alatt semleges Soft Graphite szín, hogy ne legyen rikító a főoldal.
+            banner.style.background = "linear-gradient(135deg, #25292d, #30353a)";
+            banner.style.color = "#f1f3f5";
         }
         else if(d.suly < 13000){
             banner.style.background = "linear-gradient(135deg, #7c2d12, #b45309, #d97706)";
@@ -5543,7 +5846,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.28</span>
+                <span class="onlineStatusPill ok">V2.35</span>
             </div>
         </div>
 
@@ -5631,8 +5934,52 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.30</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.35</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.35 - Soft Graphite finomítás</div>
+            <div class="menuCardBody">
+                <div>- 10 000 kg alatt a súlykijelzés semleges grafitszürke, nem piros.</div>
+                <div>- A helyi mentés és online szinkron működik tovább, de a főoldali státuszsor el lett rejtve.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.34 - Soft Graphite UI</div>
+            <div class="menuCardBody">
+                <div>- Visszafogott grafit felület tompa acélszürke kiemelésekkel.</div>
+                <div>- Csökkentett kontraszt, kevesebb erős szín és nyugodtabb kártya/gomb megjelenés.</div>
+                <div>- A négygombos alsó navigáció és minden működési funkció változatlan.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.33 - Midnight Blue UI</div>
+            <div class="menuCardBody">
+                <div>- Mélykék / midnight felület cián kiemelésekkel és finom kék fényhatásokkal.</div>
+                <div>- A négygombos alsó navigáció és az Online menüpont nélküli felépítés megmaradt.</div>
+                <div>- A működés, a helyi adatok, az admin és az online háttérszinkron változatlan.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.32 - Gunmetal Copper UI</div>
+            <div class="menuCardBody">
+                <div>- Gunmetal / sötét acél felület réz kiemelésekkel.</div>
+                <div>- Az alsó Online menüpont kikerült; a navigáció négy fő részre egyszerűsödött.</div>
+                <div>- Az online háttérfunkciók és az Online fiók beállításai megmaradtak.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.31 - Industrial Pro UI</div>
+            <div class="menuCardBody">
+                <div>- Teljes grafit / gunmetal felület borostyán kiemelésekkel.</div>
+                <div>- Egységesebb kártyák, gombok, inputok, alsó navigáció és online nézet.</div>
+                <div>- A működés és az adatok kezelése változatlan maradt.</div>
+            </div>
         </div>
 
         <div class="menuCard">
