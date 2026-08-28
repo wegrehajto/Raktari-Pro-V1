@@ -287,6 +287,53 @@ button:active{
     color:#cbd5e1;
 }
 
+.performancePatternBox{
+    margin:-4px 0 12px;
+    padding:10px 11px;
+    border-radius:13px;
+    background:linear-gradient(180deg,#1d2023,#1a1d20);
+    border:1px solid #30353a;
+    color:#c5cbd0;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.4;
+    display:none;
+    box-shadow:0 8px 18px rgba(0,0,0,.16);
+}
+.performancePatternTop{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+.performancePatternTitle{
+    color:#9299a1;
+    font-size:11px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.45px;
+}
+.performancePatternState{
+    color:#d7dbde;
+    font-weight:950;
+    white-space:nowrap;
+}
+.performancePatternState.strong{ color:#9fc0b0; }
+.performancePatternState.normal{ color:#c8cdd1; }
+.performancePatternState.slow{ color:#c29b98; }
+.performancePatternMeta{
+    margin-top:6px;
+    color:#8f979e;
+    font-size:11px;
+    font-weight:750;
+}
+.performancePatternResult{
+    margin-top:4px;
+    color:#cfd3d6;
+    font-size:12px;
+    font-weight:850;
+}
+
 
 .quoteBox{
     display:none;
@@ -1506,9 +1553,9 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V2.35 — SOFT GRAPHITE FINOMÍTÁS
+   SÚLYVADÁSZ V2.36 — SAJÁT NAPI MINTA
    Visszafogott, alacsony kontrasztú vizuális réteg.
-   A működési logikát nem módosítja.
+   Saját korábbi munkanapokból számolt, időarányos napi formajelzővel.
    ========================================================= */
 :root{
     --bg:#151719;
@@ -1824,6 +1871,8 @@ button:active{ transform:translateY(1px) scale(.995); }
 
 <div id="yesterdayCompareBox" class="yesterdayCompareBox"></div>
 
+<div id="performancePatternBox" class="performancePatternBox"></div>
+
 <div id="backupReminderBox" class="backupReminderBox"></div>
 
 <div id="saveSyncStatus" class="saveSyncStatus"></div>
@@ -1863,7 +1912,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.35 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.36 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -2976,6 +3025,186 @@ function renderYesterdayComparison(){
         </div>
     `;
 }
+function getSevenHundredsAtMinute(entries, minuteLimit){
+    return (Array.isArray(entries) ? entries : []).reduce(function(total, entry){
+        const minute = getEntryMinuteOfDay(entry);
+        if(minute === null || minute > minuteLimit) return total;
+        return total + (Number((entry && entry.suly) || 0) > HETSZAZAS_LIMIT ? 1 : 0);
+    }, 0);
+}
+
+function getPerformanceReferenceDays(){
+    const currentMonth = String(today || "").slice(0,7);
+    const byDate = {};
+
+    closedPickings.forEach(function(record){
+        if(!record || !record.datum || record.datum === today) return;
+        if(!Array.isArray(record.bevitelek) || record.bevitelek.length < 5) return;
+        if(Number(record.suly || 0) <= 0) return;
+
+        const key = String(record.datum);
+        const previous = byDate[key];
+        if(!previous || Number(record.id || 0) >= Number(previous.id || 0)){
+            byDate[key] = record;
+        }
+    });
+
+    const records = Object.keys(byDate).sort().map(function(key){ return byDate[key]; });
+    const groups = {};
+
+    records.forEach(function(record){
+        const monthKey = String(record.datum || "").slice(0,7);
+        if(!groups[monthKey]) groups[monthKey] = [];
+        groups[monthKey].push(record);
+    });
+
+    const eligibleMonths = Object.keys(groups)
+        .filter(function(monthKey){
+            return monthKey && monthKey < currentMonth && groups[monthKey].length >= 8;
+        })
+        .sort();
+
+    if(eligibleMonths.length){
+        const monthKey = eligibleMonths[eligibleMonths.length - 1];
+        return {
+            days:groups[monthKey],
+            label:getMonthLabel(monthKey),
+            monthKey:monthKey
+        };
+    }
+
+    const fallback = records.slice(-30);
+    return {
+        days:fallback,
+        label:"korábbi munkanapok",
+        monthKey:""
+    };
+}
+
+function getPercentilePosition(values, currentValue){
+    const clean = (Array.isArray(values) ? values : [])
+        .map(Number)
+        .filter(function(v){ return Number.isFinite(v); });
+
+    if(!clean.length) return 0.5;
+
+    const current = Number(currentValue || 0);
+    const below = clean.filter(function(v){ return v < current; }).length;
+    const equal = clean.filter(function(v){ return v === current; }).length;
+    return (below + equal * 0.5) / clean.length;
+}
+
+function renderPerformancePattern(){
+    const box = document.getElementById("performancePatternBox");
+    if(!box) return;
+
+    ensureTodayData();
+    const currentDay = data[today] || createEmptyDay();
+    const todayEntries = Array.isArray(currentDay.bevitelek) ? currentDay.bevitelek : [];
+    const minuteNow = getCurrentMinuteOfDay();
+    const currentWeight = Number(currentDay.suly || 0);
+
+    // Rejtett módban a forma/minősítés is elárulná, hol tart a nap.
+    if(hiddenMode){
+        box.style.display = "block";
+        box.innerHTML = `
+            <div class="performancePatternTop">
+                <span class="performancePatternTitle">Saját napi minta</span>
+                <span class="performancePatternState">••••</span>
+            </div>
+            <div class="performancePatternMeta">Rejtett módban az összehasonlítás sem látható.</div>
+        `;
+        return;
+    }
+
+    if(currentWeight <= 0 || todayEntries.length === 0){
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    // Az első fél órában nagyon zajos lenne a minta.
+    if(minuteNow < (8 * 60)){
+        box.style.display = "block";
+        box.innerHTML = `
+            <div class="performancePatternTop">
+                <span class="performancePatternTitle">Saját napi minta</span>
+                <span class="performancePatternState normal">Gyűlik az adat</span>
+            </div>
+            <div class="performancePatternMeta">08:00 után már értelmesebb összehasonlítást ad.</div>
+        `;
+        return;
+    }
+
+    const reference = getPerformanceReferenceDays();
+    const historical = (reference.days || []).map(function(record){
+        const entries = Array.isArray(record.bevitelek) ? record.bevitelek : [];
+        return {
+            record:record,
+            weightNow:getWeightAtMinute(entries, minuteNow),
+            sevenNow:getSevenHundredsAtMinute(entries, minuteNow),
+            finalWeight:Number(record.suly || 0)
+        };
+    }).filter(function(item){
+        return item.finalWeight > 0;
+    });
+
+    if(historical.length < 5){
+        box.style.display = "block";
+        box.innerHTML = `
+            <div class="performancePatternTop">
+                <span class="performancePatternTitle">Saját napi minta</span>
+                <span class="performancePatternState normal">Még kevés adat</span>
+            </div>
+            <div class="performancePatternMeta">Legalább 5 részletes korábbi munkanap kell az összehasonlításhoz.</div>
+        `;
+        return;
+    }
+
+    const currentSeven = getSevenHundredsAtMinute(todayEntries, minuteNow);
+    const weightPercentile = getPercentilePosition(historical.map(function(x){ return x.weightNow; }), currentWeight);
+    const sevenPercentile = getPercentilePosition(historical.map(function(x){ return x.sevenNow; }), currentSeven);
+
+    // A súly a fő jel, a 700-asok kisebb súllyal finomítják a képet.
+    const score = minuteNow >= (9 * 60)
+        ? (weightPercentile * 0.80 + sevenPercentile * 0.20)
+        : weightPercentile;
+
+    let stateText = "Átlagos ütem";
+    let stateClass = "normal";
+    if(score >= 0.70){
+        stateText = "Erős ütem";
+        stateClass = "strong";
+    }
+    else if(score < 0.40){
+        stateText = "Lassabb ütem";
+        stateClass = "slow";
+    }
+
+    const similar = historical.slice().sort(function(a,b){
+        const aDiff = Math.abs(a.weightNow - currentWeight) / 1000 + Math.abs(a.sevenNow - currentSeven) * 0.40;
+        const bDiff = Math.abs(b.weightNow - currentWeight) / 1000 + Math.abs(b.sevenNow - currentSeven) * 0.40;
+        return aDiff - bDiff;
+    }).slice(0, Math.min(5, historical.length));
+
+    const similarAverage = Math.round(similar.reduce(function(sum,item){
+        return sum + item.finalWeight;
+    }, 0) / Math.max(1, similar.length));
+
+    const aheadPercent = Math.max(0, Math.min(100, Math.round(weightPercentile * 100)));
+    const referenceLabel = reference.label || "korábbi munkanapok";
+
+    box.style.display = "block";
+    box.innerHTML = `
+        <div class="performancePatternTop">
+            <span class="performancePatternTitle">Saját napi minta</span>
+            <span class="performancePatternState ${stateClass}">${stateText}</span>
+        </div>
+        <div class="performancePatternMeta">${escapeHtml(referenceLabel)} · ${historical.length} nap · ugyanebben az időben a napok ${aheadPercent}%-ánál jársz előrébb.</div>
+        <div class="performancePatternResult">Hasonló napok vége átlagosan: <b>${fmt(similarAverage)} kg</b></div>
+    `;
+}
+
 function render(){
     ensureTodayData();
 
@@ -3028,6 +3257,7 @@ function render(){
     }
 
     renderYesterdayComparison();
+    renderPerformancePattern();
 
     const stEl = document.getElementById("st");
     const h700El = document.getElementById("h700");
@@ -5846,7 +6076,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.35</span>
+                <span class="onlineStatusPill ok">V2.36</span>
             </div>
         </div>
 
@@ -5934,8 +6164,17 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.35</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.36</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.36 - Saját napi minta</div>
+            <div class="menuCardBody">
+                <div>- A főoldalon megjelent egy saját korábbi napokból tanuló napi formajelző.</div>
+                <div>- Ugyanabban az időpontban hasonlítja össze a mai súlyt és a 700-as ütemet a referenciahónappal.</div>
+                <div>- Megmutatja a hasonló korábbi napok átlagos napvégi súlyát; rejtett módban az egész elemzés rejtve marad.</div>
+            </div>
         </div>
 
         <div class="menuCard">
@@ -6749,7 +6988,10 @@ function deleteAllData(){
 updateHiddenModeUI();
 updateKartonModeUI();
 render();
-setInterval(renderYesterdayComparison, 60000);
+setInterval(function(){
+    renderYesterdayComparison();
+    renderPerformancePattern();
+}, 60000);
 window.addEventListener("online", retryPendingOnlineSync);
 window.addEventListener("offline", renderSaveSyncStatus);
 retryPendingOnlineSync();
