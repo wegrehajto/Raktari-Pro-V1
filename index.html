@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V2.38 — KOMPAKT NAPI MINTA
+   SÚLYVADÁSZ V2.39 — TURBO REJTETT MÓD
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -1873,6 +1873,95 @@ button:active{ transform:translateY(1px) scale(.995); }
     .appName{ font-size:21px; }
 }
 
+
+/* =========================================================
+   V2.39 — TURBO REJTETT MÓD
+   Rejtett módban csak a két szükséges bevitel, a rögzítés
+   és a Rejtett mód kapcsoló marad a képernyőn.
+   ========================================================= */
+body.privacyMode{
+    padding-top:10px;
+    padding-bottom:16px;
+    min-height:100vh;
+}
+
+body.privacyMode .header,
+body.privacyMode #weightBanner,
+body.privacyMode #yesterdayCompareBox,
+body.privacyMode #performancePatternBox,
+body.privacyMode #backupReminderBox,
+body.privacyMode #saveSyncStatus,
+body.privacyMode #privacyHint,
+body.privacyMode #kartonBox,
+body.privacyMode #todayDashboard,
+body.privacyMode #inputHistoryBox,
+body.privacyMode .closeDayBtn,
+body.privacyMode .creatorFooter,
+body.privacyMode .bottomNav,
+body.privacyMode #menuOverlay{
+    display:none !important;
+}
+
+body.privacyMode #privacyBtn,
+body.privacyMode #tetelInputCard,
+body.privacyMode #sulyInputCard,
+body.privacyMode #turboAddBtn{
+    display:block !important;
+}
+
+body.privacyMode #privacyBtn{
+    margin:0 0 14px;
+    padding:11px 13px;
+    background:#202428;
+    border-color:#363c41;
+    color:#c9ced2;
+    box-shadow:none;
+}
+
+body.privacyMode #tetelInputCard,
+body.privacyMode #sulyInputCard{
+    margin:0 0 10px;
+    padding:13px;
+    border-color:#30363b;
+    background:#1b1e21;
+    box-shadow:none;
+}
+
+body.privacyMode #tetelInputCard .small,
+body.privacyMode #sulyInputCard .small{
+    margin-bottom:7px;
+    color:#8f979e;
+    letter-spacing:.55px;
+}
+
+body.privacyMode #tetelInputCard input,
+body.privacyMode #sulyInputCard input{
+    min-height:64px;
+    padding:12px 14px;
+    font-size:30px;
+    font-weight:800;
+    text-align:center;
+    background:#24282c;
+    border-color:#363c41;
+    color:#e6e8ea;
+    box-shadow:none;
+}
+
+body.privacyMode #tetelInputCard input:focus,
+body.privacyMode #sulyInputCard input:focus{
+    border-color:#555d64;
+    box-shadow:0 0 0 2px rgba(127,140,154,.10);
+}
+
+body.privacyMode #turboAddBtn{
+    margin:4px 0 0;
+    min-height:58px;
+    background:#2b3034;
+    border-color:#3d444a;
+    color:#e2e5e7;
+    box-shadow:none;
+}
+
 </style>
 </head>
 
@@ -1906,7 +1995,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </div>
 
 
-<div class="card">
+<div class="card" id="tetelInputCard">
     <div class="small">TÉTEL</div>
     <input id="t" type="tel" inputmode="numeric">
 </div>
@@ -1916,14 +2005,14 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
     <input id="k" type="tel" inputmode="numeric">
 </div>
 
-<div class="card">
+<div class="card" id="sulyInputCard">
     <div class="small">SÚLY</div>
     <input id="s" type="tel" inputmode="numeric">
 </div>
 
 <div id="todayDashboard" class="todayDashboard"></div>
 
-<button class="grayBtn" onclick="add()">➕ HOZZÁADÁS</button>
+<button class="grayBtn" id="turboAddBtn" onclick="add()">➕ HOZZÁADÁS</button>
 
 <div id="inputHistoryBox"></div>
 
@@ -1932,7 +2021,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.38 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V2.39 · All rights reserved.
 </div>
 
 <!-- MENU -->
@@ -2560,25 +2649,31 @@ function updateHiddenModeUI(){
 
     if(btn){
         btn.classList.toggle("active", hiddenMode);
-        btn.innerText = hiddenMode ? "🙈 Rejtett mód: BE" : "👁️ Rejtett mód: KI";
+        btn.innerText = hiddenMode ? "⚡ Rejtett mód: BE" : "👁️ Rejtett mód: KI";
     }
 
+    // V2.39: Rejtett módban nincs külön magyarázó sor; ez egy gyors, tiszta Turbo nézet.
     if(hint){
-        hint.style.display = hiddenMode ? "block" : "none";
+        hint.style.display = "none";
     }
 }
 
 function toggleHiddenMode(){
     hiddenMode = !hiddenMode;
     localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
-    updateHiddenModeUI();
-    render();
 
-    const overlay = document.getElementById("menuOverlay");
-    if(overlay && overlay.style.display === "block"){
-        const box = document.getElementById("menuContent");
-        showMenuTab(box && box.dataset.tab ? box.dataset.tab : "beallitasok");
+    if(hiddenMode){
+        // Turbo nézet mindig a szedésre tér vissza, és minden menüt bezár.
+        const overlay = document.getElementById("menuOverlay");
+        if(overlay) overlay.style.display = "none";
+        document.body.style.overflow = "";
+        setBottomNavActive("szedes");
+        try{ window.scrollTo({top:0, behavior:"auto"}); }catch(e){ window.scrollTo(0,0); }
     }
+
+    updateHiddenModeUI();
+    updateKartonModeUI();
+    render();
 }
 
 function updateKartonModeUI(){
@@ -2883,7 +2978,10 @@ function add(){
         }
     }
 
-    const szamoltKarton = getSzamoltKarton(t, k, kartonMod);
+    // Turbo/Rejtett módban csak TÉTEL + SÚLY látszik. Ha a Karton mód be volt kapcsolva,
+    // erre a bevitelre automatikusan a szokásos becsült karton számítás használódik.
+    const entryKartonMod = hiddenMode ? false : kartonMod;
+    const szamoltKarton = getSzamoltKarton(t, k, entryKartonMod);
     const hozzaadottOsszegyseg = s + t + szamoltKarton;
 
     const inputEntry = {
@@ -2891,9 +2989,9 @@ function add(){
         timestamp:new Date().toISOString(),
         ido:getTimeShort(),
         tetel:t,
-        karton:kartonMod ? k : 0,
-        beirtKarton:k,
-        kartonMod:kartonMod,
+        karton:entryKartonMod ? k : 0,
+        beirtKarton:entryKartonMod ? k : 0,
+        kartonMod:entryKartonMod,
         suly:s,
         szamoltKarton:szamoltKarton,
         osszegyseg:hozzaadottOsszegyseg,
@@ -2906,7 +3004,7 @@ function add(){
     data[today].bevitelek.push(inputEntry);
 
     data[today].tetel += t;
-    data[today].karton += kartonMod ? k : 0;
+    data[today].karton += entryKartonMod ? k : 0;
     data[today].suly += s;
     data[today].szamoltKarton += szamoltKarton;
     data[today].osszegyseg += hozzaadottOsszegyseg;
@@ -3391,7 +3489,7 @@ if(tEl){
         if(e.key === "Enter"){
             e.preventDefault();
 
-            if(kartonMod){
+            if(kartonMod && !hiddenMode){
                 kEl.focus();
             }else{
                 sEl.focus();
@@ -6109,7 +6207,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.38</span>
+                <span class="onlineStatusPill ok">V2.39</span>
             </div>
         </div>
 
@@ -6197,8 +6295,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.38</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.39</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V2.39 - Turbo rejtett mód</div>
+            <div class="menuCardBody">
+                <div>- Rejtett módban minden statisztika, előzmény, fejléc, menü és kiegészítő elem eltűnik.</div>
+                <div>- Csak a TÉTEL, SÚLY, HOZZÁADÁS és a Rejtett mód kapcsoló marad látható.</div>
+                <div>- Kikapcsoláskor a teljes normál felület azonnal visszatér.</div>
+                <div>- Turbo módban a Karton mód helyett az adott bevitelhez automatikus becsült karton számítás használódik.</div>
+            </div>
         </div>
 
         <div class="menuCard">
