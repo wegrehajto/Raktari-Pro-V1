@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V2.39 — TURBO REJTETT MÓD
+   SÚLYVADÁSZ V3.0 — TURBO PIN FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -1875,7 +1875,7 @@ button:active{ transform:translateY(1px) scale(.995); }
 
 
 /* =========================================================
-   V2.39 — TURBO REJTETT MÓD
+   V3.0 — TURBO PIN FŐVERZIÓ
    Rejtett módban csak a két szükséges bevitel, a rögzítés
    és a Rejtett mód kapcsoló marad a képernyőn.
    ========================================================= */
@@ -1962,6 +1962,99 @@ body.privacyMode #turboAddBtn{
     box-shadow:none;
 }
 
+/* V3.0 — apró Turbo visszajelzés */
+.turboFeedback{
+    display:none;
+    min-height:26px;
+    margin:9px 0 0;
+    text-align:center;
+    font-size:13px;
+    font-weight:750;
+    letter-spacing:.2px;
+    color:#9fa7ad;
+    opacity:0;
+    transform:translateY(-2px);
+    transition:opacity .18s ease, transform .18s ease;
+    pointer-events:none;
+}
+body.privacyMode .turboFeedback{
+    display:block;
+}
+body.privacyMode .turboFeedback.show{
+    opacity:1;
+    transform:translateY(0);
+}
+
+/* V3.0 — Rejtett mód PIN feloldó */
+.hiddenPinOverlay{
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(8,10,12,.78);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+.hiddenPinOverlay.open{ display:flex; }
+.hiddenPinCard{
+    width:min(100%,360px);
+    padding:18px;
+    border:1px solid #343a3f;
+    border-radius:16px;
+    background:#1b1e21;
+    box-shadow:0 18px 50px rgba(0,0,0,.42);
+}
+.hiddenPinTitle{
+    font-size:18px;
+    font-weight:850;
+    color:#e3e6e8;
+}
+.hiddenPinText{
+    margin-top:5px;
+    font-size:13px;
+    line-height:1.45;
+    color:#969ea4;
+}
+.hiddenPinInput{
+    width:100%;
+    min-height:58px;
+    margin-top:14px;
+    padding:10px 14px;
+    border:1px solid #3a4147;
+    border-radius:12px;
+    outline:none;
+    text-align:center;
+    font-size:28px;
+    font-weight:850;
+    letter-spacing:8px;
+    color:#e7e9ea;
+    background:#24282c;
+}
+.hiddenPinInput:focus{
+    border-color:#596168;
+    box-shadow:0 0 0 2px rgba(127,140,154,.10);
+}
+.hiddenPinError{
+    min-height:18px;
+    margin-top:8px;
+    font-size:12px;
+    text-align:center;
+    color:#c98f8f;
+}
+.hiddenPinActions{
+    display:grid;
+    grid-template-columns:1fr 1.3fr;
+    gap:8px;
+    margin-top:8px;
+}
+.hiddenPinActions button{
+    min-height:46px;
+    border-radius:11px;
+}
+
 </style>
 </head>
 
@@ -2013,6 +2106,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 <div id="todayDashboard" class="todayDashboard"></div>
 
 <button class="grayBtn" id="turboAddBtn" onclick="add()">➕ HOZZÁADÁS</button>
+<div id="turboFeedback" class="turboFeedback" aria-live="polite"></div>
 
 <div id="inputHistoryBox"></div>
 
@@ -2021,7 +2115,21 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V2.39 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.0 · All rights reserved.
+</div>
+
+<!-- REJTETT MÓD PIN -->
+<div id="hiddenPinOverlay" class="hiddenPinOverlay" aria-hidden="true">
+    <div class="hiddenPinCard" role="dialog" aria-modal="true" aria-labelledby="hiddenPinTitle">
+        <div id="hiddenPinTitle" class="hiddenPinTitle">Rejtett mód feloldása</div>
+        <div id="hiddenPinText" class="hiddenPinText">Add meg a PIN-kódot.</div>
+        <input id="hiddenPinInput" class="hiddenPinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+        <div id="hiddenPinError" class="hiddenPinError"></div>
+        <div class="hiddenPinActions">
+            <button class="settingBtn" type="button" onclick="cancelHiddenPinModal()">Mégse</button>
+            <button id="hiddenPinSubmitBtn" class="settingBtn active" type="button" onclick="submitHiddenPinModal()">Feloldás</button>
+        </div>
+    </div>
 </div>
 
 <!-- MENU -->
@@ -2050,6 +2158,9 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 <script>
 let kartonMod = localStorage.getItem("kartonMod") === "1";
 let hiddenMode = localStorage.getItem("hiddenMode") === "1";
+const HIDDEN_MODE_PIN_KEY = "hiddenModePinHashV1";
+let hiddenPinModalResolve = null;
+let turboFeedbackTimer = null;
 
 // Supabase online verseny mód.
 // Csak a publishable kulcs van itt. Secret/service_role kulcsot tilos index.html-be tenni.
@@ -2652,14 +2763,186 @@ function updateHiddenModeUI(){
         btn.innerText = hiddenMode ? "⚡ Rejtett mód: BE" : "👁️ Rejtett mód: KI";
     }
 
-    // V2.39: Rejtett módban nincs külön magyarázó sor; ez egy gyors, tiszta Turbo nézet.
+    // V3.0: Turbo módban csak a gyors beviteli felület marad.
     if(hint){
         hint.style.display = "none";
     }
 }
 
-function toggleHiddenMode(){
-    hiddenMode = !hiddenMode;
+async function hashHiddenModePin(pin){
+    const value = "sulyvadasz:hidden-mode:v1:" + String(pin || "");
+
+    try{
+        if(window.crypto && window.crypto.subtle && window.TextEncoder){
+            const bytes = new TextEncoder().encode(value);
+            const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+            return Array.from(new Uint8Array(digest)).map(function(b){
+                return b.toString(16).padStart(2, "0");
+            }).join("");
+        }
+    }
+    catch(e){}
+
+    // Régebbi böngésző fallback. Nem a PIN kerül eltárolásra, csak egy egyirányú lenyomat.
+    let h = 2166136261;
+    for(let i = 0; i < value.length; i++){
+        h ^= value.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return "fallback-" + (h >>> 0).toString(16);
+}
+
+function hasHiddenModePin(){
+    return Boolean(localStorage.getItem(HIDDEN_MODE_PIN_KEY));
+}
+
+function openHiddenPinModal(options){
+    const opts = options || {};
+    const overlay = document.getElementById("hiddenPinOverlay");
+    const title = document.getElementById("hiddenPinTitle");
+    const text = document.getElementById("hiddenPinText");
+    const input = document.getElementById("hiddenPinInput");
+    const error = document.getElementById("hiddenPinError");
+    const submit = document.getElementById("hiddenPinSubmitBtn");
+
+    if(!overlay || !input){
+        return Promise.resolve(null);
+    }
+
+    if(hiddenPinModalResolve){
+        hiddenPinModalResolve(null);
+        hiddenPinModalResolve = null;
+    }
+
+    if(title) title.textContent = opts.title || "Rejtett mód feloldása";
+    if(text) text.textContent = opts.text || "Add meg a PIN-kódot.";
+    if(submit) submit.textContent = opts.confirmText || "Feloldás";
+    if(error) error.textContent = "";
+    input.value = "";
+
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
+
+    setTimeout(function(){
+        try{ input.focus(); }catch(e){}
+    }, 80);
+
+    return new Promise(function(resolve){
+        hiddenPinModalResolve = resolve;
+    });
+}
+
+function closeHiddenPinModal(result){
+    const overlay = document.getElementById("hiddenPinOverlay");
+    const input = document.getElementById("hiddenPinInput");
+    if(overlay){
+        overlay.classList.remove("open");
+        overlay.setAttribute("aria-hidden", "true");
+    }
+    if(input) input.value = "";
+
+    const resolve = hiddenPinModalResolve;
+    hiddenPinModalResolve = null;
+    if(resolve) resolve(result);
+}
+
+function submitHiddenPinModal(){
+    const input = document.getElementById("hiddenPinInput");
+    const error = document.getElementById("hiddenPinError");
+    const pin = input ? input.value.trim() : "";
+
+    if(!/^\d{4,8}$/.test(pin)){
+        if(error) error.textContent = "A PIN 4–8 számjegy legyen.";
+        if(input){ input.value = ""; input.focus(); }
+        return;
+    }
+
+    closeHiddenPinModal(pin);
+}
+
+function cancelHiddenPinModal(){
+    closeHiddenPinModal(null);
+}
+
+async function setupHiddenModePin(){
+    const first = await openHiddenPinModal({
+        title:"Rejtett mód PIN beállítása",
+        text:"Adj meg egy 4–8 számjegyű PIN-t. Ezt fogja kérni a Turbo mód kikapcsolásakor.",
+        confirmText:"Tovább"
+    });
+    if(first === null) return false;
+
+    const second = await openHiddenPinModal({
+        title:"PIN megerősítése",
+        text:"Írd be még egyszer ugyanazt a PIN-kódot.",
+        confirmText:"Mentés"
+    });
+    if(second === null) return false;
+
+    if(first !== second){
+        alert("A két PIN nem egyezik. Próbáld újra.");
+        return setupHiddenModePin();
+    }
+
+    const hash = await hashHiddenModePin(first);
+    localStorage.setItem(HIDDEN_MODE_PIN_KEY, hash);
+    return true;
+}
+
+async function verifyHiddenModePin(){
+    const stored = localStorage.getItem(HIDDEN_MODE_PIN_KEY) || "";
+    if(!stored) return false;
+
+    const pin = await openHiddenPinModal({
+        title:"Rejtett mód feloldása",
+        text:"Add meg a PIN-kódot a teljes felület visszaállításához.",
+        confirmText:"Feloldás"
+    });
+    if(pin === null) return false;
+
+    const hash = await hashHiddenModePin(pin);
+    if(hash !== stored){
+        const error = document.getElementById("hiddenPinError");
+        alert("Hibás PIN. A Rejtett mód bekapcsolva marad.");
+        return false;
+    }
+    return true;
+}
+
+async function changeHiddenModePin(){
+    const ok = await setupHiddenModePin();
+    if(ok){
+        alert("A Rejtett mód PIN frissítve.");
+        refreshActiveMenu();
+    }
+}
+
+async function toggleHiddenMode(){
+    if(hiddenMode){
+        // V3.0: feloldás csak PIN után.
+        if(!hasHiddenModePin()){
+            // Régi verzióból úgy is érkezhetünk, hogy a Rejtett mód már BE volt,
+            // de még nem létezett PIN. Ilyenkor a tulajdonos egyszer beállítja,
+            // majd a jelenlegi Turbo nézet feloldódik.
+            const created = await setupHiddenModePin();
+            if(!created) return;
+            hiddenMode = false;
+        }
+        else{
+            const verified = await verifyHiddenModePin();
+            if(!verified) return;
+            hiddenMode = false;
+        }
+    }
+    else{
+        // Első használatkor egyszer kérünk egy saját Turbo PIN-t.
+        if(!hasHiddenModePin()){
+            const created = await setupHiddenModePin();
+            if(!created) return;
+        }
+        hiddenMode = true;
+    }
+
     localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
 
     if(hiddenMode){
@@ -2675,6 +2958,41 @@ function toggleHiddenMode(){
     updateKartonModeUI();
     render();
 }
+
+function showTurboFeedback(){
+    if(!hiddenMode) return;
+    const box = document.getElementById("turboFeedback");
+    if(!box) return;
+
+    if(turboFeedbackTimer){
+        clearTimeout(turboFeedbackTimer);
+        turboFeedbackTimer = null;
+    }
+
+    box.textContent = "✓ Rögzítve";
+    box.classList.remove("show");
+    // Újraindítja az animációt gyors egymás utáni beviteleknél is.
+    void box.offsetWidth;
+    box.classList.add("show");
+
+    turboFeedbackTimer = setTimeout(function(){
+        box.classList.remove("show");
+        turboFeedbackTimer = null;
+    }, 950);
+}
+
+document.addEventListener("keydown", function(event){
+    const overlay = document.getElementById("hiddenPinOverlay");
+    if(!overlay || !overlay.classList.contains("open")) return;
+    if(event.key === "Enter"){
+        event.preventDefault();
+        submitHiddenPinModal();
+    }
+    else if(event.key === "Escape"){
+        event.preventDefault();
+        cancelHiddenPinModal();
+    }
+});
 
 function updateKartonModeUI(){
     const box = document.getElementById("kartonBox");
@@ -3034,6 +3352,7 @@ function add(){
     sInput.value = "";
 
     render();
+    showTurboFeedback();
     scheduleOnlineLiveUpdate();
 
     setTimeout(function(){
@@ -6207,7 +6526,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V2.39</span>
+                <span class="onlineStatusPill ok">V3.0</span>
             </div>
         </div>
 
@@ -6234,6 +6553,13 @@ function renderBeallitasok(){
                 </div>
                 <button id="settingsKartonBtn" class="settingBtn ${kartonMod ? "active" : ""}" onclick="toggleKartonMod()">
                     ${kartonMod ? "Karton mód: BE" : "Karton mód: KI"}
+                </button>
+                <div class="menuLine" style="margin-top:12px;"><span>Rejtett mód PIN</span><b>${hasHiddenModePin() ? "Beállítva" : "Nincs beállítva"}</b></div>
+                <div class="settingNote">
+                    A Rejtett mód kikapcsolásához szükséges. A PIN helyett csak egy helyi lenyomat kerül mentésre.
+                </div>
+                <button class="settingBtn" onclick="changeHiddenModePin()">
+                    ${hasHiddenModePin() ? "Rejtett mód PIN cseréje" : "Rejtett mód PIN beállítása"}
                 </button>
             </div>
         </details>
@@ -6295,8 +6621,19 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V2.39</b></div>
-            <div class="menuLine"><span>Állapot</span><b class="good">Stabil tesztverzió</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.0</b></div>
+            <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.0 - Turbo PIN főverzió</div>
+            <div class="menuCardBody">
+                <div>- A Rejtett mód kikapcsolása mostantól 4–8 számjegyű PIN-t kér.</div>
+                <div>- Első bekapcsoláskor egyszer beállítható a Turbo PIN; normál módban a Beállítások alatt később cserélhető.</div>
+                <div>- A PIN nyers formában nem kerül elmentésre, csak helyi lenyomatként.</div>
+                <div>- Turbo módban sikeres rögzítés után rövid, diszkrét „✓ Rögzítve” visszajelzés jelenik meg.</div>
+                <div>- A V2.39 Turbo nézet és a teljes analitikai háttér változatlanul megmaradt.</div>
+            </div>
         </div>
 
         <div class="menuCard">
@@ -6935,7 +7272,9 @@ function importBackupFromFile(input){
             vacationDays = restoredVacation || [];
             monthlyArchives = restoredArchives || [];
             onlineUser = restoredOnlineUser && restoredOnlineUser.user_id ? restoredOnlineUser : null;
-            hiddenMode = !!restoredSettings.hiddenMode;
+            // A Turbo PIN lenyomat szándékosan nem része a mentésnek.
+            // Új eszközön ezért nem állítjuk vissza automatikusan lezárt állapotba az appot.
+            hiddenMode = hasHiddenModePin() ? !!restoredSettings.hiddenMode : false;
             kartonMod = !!restoredSettings.kartonMod;
 
             today = getTodayKey();
