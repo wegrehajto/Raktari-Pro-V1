@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V3.0 — TURBO PIN FŐVERZIÓ
+   SÚLYVADÁSZ V3.2 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -1895,7 +1895,6 @@ body.privacyMode #privacyHint,
 body.privacyMode #kartonBox,
 body.privacyMode #todayDashboard,
 body.privacyMode #inputHistoryBox,
-body.privacyMode .closeDayBtn,
 body.privacyMode .creatorFooter,
 body.privacyMode .bottomNav,
 body.privacyMode #menuOverlay{
@@ -1916,6 +1915,15 @@ body.privacyMode #privacyBtn{
     border-color:#363c41;
     color:#c9ced2;
     box-shadow:none;
+}
+
+body.privacyMode .closeDayBtn{
+    display:block !important;
+    margin-top:18px;
+    background:linear-gradient(180deg,#56363a,#472d30);
+    color:#e8d6d8;
+    border-color:#68484c;
+    box-shadow:0 7px 16px rgba(0,0,0,.16);
 }
 
 body.privacyMode #tetelInputCard,
@@ -1962,7 +1970,7 @@ body.privacyMode #turboAddBtn{
     box-shadow:none;
 }
 
-/* V3.0 — apró Turbo visszajelzés */
+/* V3.2 — apró Turbo visszajelzés */
 .turboFeedback{
     display:none;
     min-height:26px;
@@ -1985,7 +1993,7 @@ body.privacyMode .turboFeedback.show{
     transform:translateY(0);
 }
 
-/* V3.0 — Rejtett mód PIN feloldó */
+/* V3.2 — Turbo napzáró PIN */
 .hiddenPinOverlay{
     position:fixed;
     inset:0;
@@ -2080,7 +2088,7 @@ body.privacyMode .turboFeedback.show{
 <div id="saveSyncStatus" class="saveSyncStatus"></div>
 
 <button class="privacyBtn" onclick="toggleHiddenMode()" id="privacyBtn">
-🙈 Rejtett mód: KI
+⚡ Turbo mód: KI
 </button>
 
 <div id="privacyHint" class="privacyHint" style="display:none;">
@@ -2110,18 +2118,18 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 
 <div id="inputHistoryBox"></div>
 
-<button class="closeDayBtn" onclick="closePicking()">
+<button class="closeDayBtn" id="closeDayBtn" onclick="closePicking()">
 📅 Szedés lezárása
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V3.0 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.2 · All rights reserved.
 </div>
 
-<!-- REJTETT MÓD PIN -->
+<!-- TURBO NAPZÁRÓ PIN -->
 <div id="hiddenPinOverlay" class="hiddenPinOverlay" aria-hidden="true">
     <div class="hiddenPinCard" role="dialog" aria-modal="true" aria-labelledby="hiddenPinTitle">
-        <div id="hiddenPinTitle" class="hiddenPinTitle">Rejtett mód feloldása</div>
+        <div id="hiddenPinTitle" class="hiddenPinTitle">Turbo napzáró PIN</div>
         <div id="hiddenPinText" class="hiddenPinText">Add meg a PIN-kódot.</div>
         <input id="hiddenPinInput" class="hiddenPinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
         <div id="hiddenPinError" class="hiddenPinError"></div>
@@ -2755,15 +2763,20 @@ function showDailyQuote(){
 function updateHiddenModeUI(){
     const btn = document.getElementById("privacyBtn");
     const hint = document.getElementById("privacyHint");
+    const closeBtn = document.getElementById("closeDayBtn");
 
     document.body.classList.toggle("privacyMode", hiddenMode);
 
     if(btn){
         btn.classList.toggle("active", hiddenMode);
-        btn.innerText = hiddenMode ? "⚡ Rejtett mód: BE" : "👁️ Rejtett mód: KI";
+        btn.innerText = hiddenMode ? "⚡ Turbo mód: NAPZÁRÁSIG" : "⚡ Turbo mód: KI";
     }
 
-    // V3.0: Turbo módban csak a gyors beviteli felület marad.
+    if(closeBtn){
+        closeBtn.innerText = hiddenMode ? "🏁 NAP LEZÁRÁSA / TURBO FELOLDÁSA" : "📅 Szedés lezárása";
+    }
+
+    // V3.2: Turbo módban csak a gyors bevitel és a valódi napzárás marad elérhető.
     if(hint){
         hint.style.display = "none";
     }
@@ -2814,9 +2827,9 @@ function openHiddenPinModal(options){
         hiddenPinModalResolve = null;
     }
 
-    if(title) title.textContent = opts.title || "Rejtett mód feloldása";
+    if(title) title.textContent = opts.title || "Turbo napzáró PIN";
     if(text) text.textContent = opts.text || "Add meg a PIN-kódot.";
-    if(submit) submit.textContent = opts.confirmText || "Feloldás";
+    if(submit) submit.textContent = opts.confirmText || "Folytatás";
     if(error) error.textContent = "";
     input.value = "";
 
@@ -2866,8 +2879,8 @@ function cancelHiddenPinModal(){
 
 async function setupHiddenModePin(){
     const first = await openHiddenPinModal({
-        title:"Rejtett mód PIN beállítása",
-        text:"Adj meg egy 4–8 számjegyű PIN-t. Ezt fogja kérni a Turbo mód kikapcsolásakor.",
+        title:"Turbo napzáró PIN beállítása",
+        text:"Adj meg egy 4–8 számjegyű PIN-t. Turbo módban ezt a nap lezárásakor fogja kérni.",
         confirmText:"Tovább"
     });
     if(first === null) return false;
@@ -2894,16 +2907,15 @@ async function verifyHiddenModePin(){
     if(!stored) return false;
 
     const pin = await openHiddenPinModal({
-        title:"Rejtett mód feloldása",
-        text:"Add meg a PIN-kódot a teljes felület visszaállításához.",
-        confirmText:"Feloldás"
+        title:"Turbo nap lezárása",
+        text:"Add meg a PIN-kódot a Turbo nap végleges lezárásához.",
+        confirmText:"Nap lezárása"
     });
     if(pin === null) return false;
 
     const hash = await hashHiddenModePin(pin);
     if(hash !== stored){
-        const error = document.getElementById("hiddenPinError");
-        alert("Hibás PIN. A Rejtett mód bekapcsolva marad.");
+        alert("Hibás PIN. A Turbo mód napzárásig bekapcsolva marad.");
         return false;
     }
     return true;
@@ -2912,47 +2924,45 @@ async function verifyHiddenModePin(){
 async function changeHiddenModePin(){
     const ok = await setupHiddenModePin();
     if(ok){
-        alert("A Rejtett mód PIN frissítve.");
+        alert("A Turbo napzáró PIN frissítve.");
         refreshActiveMenu();
     }
 }
 
 async function toggleHiddenMode(){
     if(hiddenMode){
-        // V3.0: feloldás csak PIN után.
-        if(!hasHiddenModePin()){
-            // Régi verzióból úgy is érkezhetünk, hogy a Rejtett mód már BE volt,
-            // de még nem létezett PIN. Ilyenkor a tulajdonos egyszer beállítja,
-            // majd a jelenlegi Turbo nézet feloldódik.
-            const created = await setupHiddenModePin();
-            if(!created) return;
-            hiddenMode = false;
-        }
-        else{
-            const verified = await verifyHiddenModePin();
-            if(!verified) return;
-            hiddenMode = false;
-        }
-    }
-    else{
-        // Első használatkor egyszer kérünk egy saját Turbo PIN-t.
-        if(!hasHiddenModePin()){
-            const created = await setupHiddenModePin();
-            if(!created) return;
-        }
-        hiddenMode = true;
+        // V3.2: nincs napközbeni feloldás, PIN-nel sem.
+        // A Turbo mód kizárólag sikeres napzárással ér véget.
+        alert(
+            "A Turbo mód napzárásig aktív.\n\n" +
+            "Nap közben nem kapcsolható ki, PIN-nel sem.\n" +
+            "A teljes nézet a NAP LEZÁRÁSA után tér vissza."
+        );
+        return;
     }
 
-    localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
-
-    if(hiddenMode){
-        // Turbo nézet mindig a szedésre tér vissza, és minden menüt bezár.
-        const overlay = document.getElementById("menuOverlay");
-        if(overlay) overlay.style.display = "none";
-        document.body.style.overflow = "";
-        setBottomNavActive("szedes");
-        try{ window.scrollTo({top:0, behavior:"auto"}); }catch(e){ window.scrollTo(0,0); }
+    // Első használatkor egyszer kérünk egy saját Turbo napzáró PIN-t.
+    if(!hasHiddenModePin()){
+        const created = await setupHiddenModePin();
+        if(!created) return;
     }
+
+    const confirmed = confirm(
+        "Turbo mód bekapcsolása?\n\n" +
+        "Napzárásig nem kapcsolható ki.\n\n" +
+        "Biztosan folytatod?"
+    );
+    if(!confirmed) return;
+
+    hiddenMode = true;
+    localStorage.setItem("hiddenMode", "1");
+
+    // Turbo nézet mindig a szedésre tér vissza, és minden menüt bezár.
+    const overlay = document.getElementById("menuOverlay");
+    if(overlay) overlay.style.display = "none";
+    document.body.style.overflow = "";
+    setBottomNavActive("szedes");
+    try{ window.scrollTo({top:0, behavior:"auto"}); }catch(e){ window.scrollTo(0,0); }
 
     updateHiddenModeUI();
     updateKartonModeUI();
@@ -3734,6 +3744,17 @@ async function closePicking(){
 
     if(!confirm("Biztosan le akarod zárni a szedést?")) return;
 
+    // V3.2: Turbo módból csak valódi napzárással lehet kilépni.
+    // A PIN itt már nem napközbeni feloldás, hanem a napzárás megerősítése.
+    if(hiddenMode){
+        if(!hasHiddenModePin()){
+            const created = await setupHiddenModePin();
+            if(!created) return;
+        }
+        const verified = await verifyHiddenModePin();
+        if(!verified) return;
+    }
+
     const onlineOk = await handleOnlineSubmitBeforeClose(d);
     if(!onlineOk) return;
 
@@ -3768,10 +3789,17 @@ async function closePicking(){
     data[today] = createEmptyDay();
     saveData();
 
+    // Sikeres napzárás után a Turbo zár automatikusan feloldódik.
+    if(hiddenMode){
+        hiddenMode = false;
+        localStorage.setItem("hiddenMode", "0");
+    }
+
     document.getElementById("t").value = "";
     document.getElementById("k").value = "";
     document.getElementById("s").value = "";
 
+    updateHiddenModeUI();
     updateKartonModeUI();
     render();
 
@@ -6526,7 +6554,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.0</span>
+                <span class="onlineStatusPill ok">V3.2</span>
             </div>
         </div>
 
@@ -6554,12 +6582,12 @@ function renderBeallitasok(){
                 <button id="settingsKartonBtn" class="settingBtn ${kartonMod ? "active" : ""}" onclick="toggleKartonMod()">
                     ${kartonMod ? "Karton mód: BE" : "Karton mód: KI"}
                 </button>
-                <div class="menuLine" style="margin-top:12px;"><span>Rejtett mód PIN</span><b>${hasHiddenModePin() ? "Beállítva" : "Nincs beállítva"}</b></div>
+                <div class="menuLine" style="margin-top:12px;"><span>Turbo napzáró PIN</span><b>${hasHiddenModePin() ? "Beállítva" : "Nincs beállítva"}</b></div>
                 <div class="settingNote">
-                    A Rejtett mód kikapcsolásához szükséges. A PIN helyett csak egy helyi lenyomat kerül mentésre.
+                    Turbo módban a nap lezárásához szükséges. Nap közben a Turbo mód PIN-nel sem kapcsolható ki. A PIN helyett csak egy helyi lenyomat kerül mentésre.
                 </div>
                 <button class="settingBtn" onclick="changeHiddenModePin()">
-                    ${hasHiddenModePin() ? "Rejtett mód PIN cseréje" : "Rejtett mód PIN beállítása"}
+                    ${hasHiddenModePin() ? "Turbo napzáró PIN cseréje" : "Turbo napzáró PIN beállítása"}
                 </button>
             </div>
         </details>
@@ -6621,8 +6649,29 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.0</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.2</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.2 - Turbo bekapcsolási figyelmeztetés</div>
+            <div class="menuCardBody">
+                <div>- Turbo mód bekapcsolásakor külön megerősítő figyelmeztetés jelenik meg.</div>
+                <div>- A figyelmeztetés egyértelműen leírja, hogy nap közben nem lehet kikapcsolni.</div>
+                <div>- Csak a sikeres NAP LEZÁRÁSA után tér vissza a teljes normál felület.</div>
+                <div>- Így kisebb az esélye annak, hogy valaki reflexből vagy véletlenül aktiválja.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.1 - Turbo napzárás-zár</div>
+            <div class="menuCardBody">
+                <div>- Turbo mód bekapcsolása után nap közben már nem lehet visszakapcsolni normál nézetre, PIN-nel sem.</div>
+                <div>- Turbo módban a Szedés lezárása gomb elérhető marad.</div>
+                <div>- A Turbo napzáró PIN a nap lezárását erősíti meg.</div>
+                <div>- Sikeres napzárás után a Turbo mód automatikusan kikapcsol, és visszatér a teljes felület.</div>
+                <div>- Így nap közben nem lehet rálesni az aktuális eredményre a mód ki-be kapcsolgatásával.</div>
+            </div>
         </div>
 
         <div class="menuCard">
