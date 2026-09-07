@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V3.3 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
+   SÚLYVADÁSZ V3.4 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -1894,7 +1894,6 @@ body.privacyMode #saveSyncStatus,
 body.privacyMode #privacyHint,
 body.privacyMode #kartonBox,
 body.privacyMode #todayDashboard,
-body.privacyMode #inputHistoryBox,
 body.privacyMode .creatorFooter{
     display:none !important;
 }
@@ -1902,6 +1901,10 @@ body.privacyMode .creatorFooter{
 /* V3.3: Turbo módban az alsó menü újra elérhető. */
 body.privacyMode .bottomNav{
     display:grid !important;
+}
+
+body.privacyMode #inputHistoryBox{
+    display:block !important;
 }
 
 body.privacyMode #privacyBtn,
@@ -2126,7 +2129,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V3.3 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.4 · All rights reserved.
 </div>
 
 <!-- TURBO NAPZÁRÓ PIN -->
@@ -6557,7 +6560,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.3</span>
+                <span class="onlineStatusPill ok">V3.4</span>
             </div>
         </div>
 
@@ -6652,8 +6655,17 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.3</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.4</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.4 - Turbo beviteli előzmény</div>
+            <div class="menuCardBody">
+                <div>- Turbo módban a Beviteli előzmény újra látható.</div>
+                <div>- Az elütött bejegyzések szerkeszthetők vagy törölhetők, az utolsó bevitel visszavonható.</div>
+                <div>- A napi összesítő és a többi fő statisztika továbbra is rejtve marad.</div>
+            </div>
         </div>
 
         <div class="menuCard">
