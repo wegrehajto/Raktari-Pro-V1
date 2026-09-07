@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V3.6 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
+   SÚLYVADÁSZ V3.8 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -2016,6 +2016,147 @@ body.privacyMode .turboFeedback.show{
     transform:translateY(0);
 }
 
+
+/* V3.7 — 60 perces szünetidő követő */
+.breakPill{
+    width:100%;
+    margin:8px 0 12px;
+    padding:9px 12px;
+    border:1px solid #343a3f;
+    border-radius:12px;
+    background:#202428;
+    color:#d7dbde;
+    font-size:13px;
+    font-weight:850;
+    box-shadow:none;
+}
+.breakPill.active{
+    background:#2a2f33;
+    border-color:#4a5258;
+    color:#f0f2f3;
+}
+.breakOverlay{
+    position:fixed;
+    inset:0;
+    z-index:99998;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(8,10,12,.78);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+.breakOverlay.open{ display:flex; }
+.breakCard{
+    width:min(100%,390px);
+    max-height:min(78vh,650px);
+    overflow:auto;
+    padding:18px;
+    border:1px solid #343a3f;
+    border-radius:16px;
+    background:#1b1e21;
+    box-shadow:0 18px 50px rgba(0,0,0,.42);
+}
+.breakTitle{
+    font-size:18px;
+    font-weight:900;
+    color:#e3e6e8;
+}
+.breakSummary{
+    margin-top:7px;
+    font-size:13px;
+    line-height:1.45;
+    color:#9ca4aa;
+}
+.breakBig{
+    margin:14px 0;
+    padding:14px;
+    text-align:center;
+    border:1px solid #31373c;
+    border-radius:14px;
+    background:#22262a;
+}
+.breakBigValue{
+    font-size:30px;
+    font-weight:950;
+    color:#eef0f2;
+}
+.breakBigLabel{
+    margin-top:3px;
+    font-size:11px;
+    font-weight:800;
+    color:#8f989f;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+.breakMainBtn{
+    width:100%;
+    margin-top:4px;
+    padding:13px 14px;
+    border-radius:12px;
+    font-size:14px;
+    font-weight:900;
+}
+.breakHistoryTitle{
+    margin-top:16px;
+    font-size:13px;
+    font-weight:900;
+    color:#cdd2d5;
+}
+.breakHistoryEmpty{
+    margin-top:8px;
+    font-size:12px;
+    color:#808990;
+}
+.breakRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:7px;
+    padding:8px 9px;
+    border:1px solid #30363b;
+    border-radius:10px;
+    background:#202428;
+}
+.breakRowText{
+    min-width:0;
+    font-size:12px;
+    line-height:1.35;
+    color:#c7ccd0;
+}
+.breakRowActions{
+    display:flex;
+    gap:5px;
+    flex-shrink:0;
+}
+.breakMiniBtn{
+    width:auto;
+    margin:0;
+    padding:6px 8px;
+    border-radius:8px;
+    font-size:11px;
+    font-weight:850;
+    background:#292e32;
+    border:1px solid #3b4248;
+    color:#cbd0d4;
+}
+.breakCloseBtn{
+    width:100%;
+    margin-top:14px;
+    padding:10px;
+    border-radius:10px;
+    font-size:12px;
+    font-weight:850;
+    background:#24282c;
+    border:1px solid #353c41;
+    color:#aeb5ba;
+}
+body.privacyMode #breakPill{
+    display:block !important;
+}
+
 /* V3.2 — Turbo napzáró PIN */
 .hiddenPinOverlay{
     position:fixed;
@@ -2114,6 +2255,10 @@ body.privacyMode .turboFeedback.show{
 ⚡ Turbo mód: KI
 </button>
 
+<button class="breakPill" id="breakPill" type="button" onclick="openBreakModal()">
+☕ 60p
+</button>
+
 <div id="privacyHint" class="privacyHint" style="display:none;">
 A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </div>
@@ -2146,7 +2291,14 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V3.6 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.8 · All rights reserved.
+</div>
+
+<!-- SZÜNETIDŐ -->
+<div id="breakOverlay" class="breakOverlay" aria-hidden="true">
+    <div class="breakCard" role="dialog" aria-modal="true" aria-labelledby="breakTitle">
+        <div id="breakModalContent"></div>
+    </div>
 </div>
 
 <!-- TURBO NAPZÁRÓ PIN -->
@@ -2192,6 +2344,251 @@ let hiddenMode = localStorage.getItem("hiddenMode") === "1";
 const HIDDEN_MODE_PIN_KEY = "hiddenModePinHashV1";
 let hiddenPinModalResolve = null;
 let turboFeedbackTimer = null;
+
+/* =========================================================
+   V3.7 — SZÜNETIDŐ KÖVETŐ
+   Napi keret: 60 perc. A futó szünet kezdési időpontja kerül
+   mentésre, így appváltás/telefonzárás után is pontos marad.
+   ========================================================= */
+const BREAK_LIMIT_MINUTES = 60;
+const BREAK_STORAGE_KEY = "sulyvadaszBreakTrackerV1";
+let breakTickTimer = null;
+
+function getBreakTodayKey(){
+    return getTodayKey();
+}
+
+function createEmptyBreakState(){
+    return {
+        date:getBreakTodayKey(),
+        activeStart:null,
+        sessions:[]
+    };
+}
+
+function loadBreakState(){
+    let state = null;
+    try{
+        state = JSON.parse(localStorage.getItem(BREAK_STORAGE_KEY) || "null");
+    }catch(e){}
+
+    if(!state || typeof state !== "object" || state.date !== getBreakTodayKey()){
+        state = createEmptyBreakState();
+        saveBreakState(state);
+    }
+
+    if(!Array.isArray(state.sessions)) state.sessions = [];
+    if(state.activeStart !== null && !Number.isFinite(Number(state.activeStart))){
+        state.activeStart = null;
+    }
+    return state;
+}
+
+function saveBreakState(state){
+    localStorage.setItem(BREAK_STORAGE_KEY, JSON.stringify(state));
+}
+
+function isBreakActive(){
+    return Boolean(loadBreakState().activeStart);
+}
+
+function getBreakUsedMs(state){
+    const s = state || loadBreakState();
+    let total = (s.sessions || []).reduce(function(sum, item){
+        const start = Number(item.start || 0);
+        const end = Number(item.end || 0);
+        return sum + Math.max(0, end - start);
+    }, 0);
+
+    if(s.activeStart){
+        total += Math.max(0, Date.now() - Number(s.activeStart));
+    }
+    return total;
+}
+
+function getBreakRemainingMs(state){
+    return (BREAK_LIMIT_MINUTES * 60000) - getBreakUsedMs(state);
+}
+
+function formatBreakClock(ms){
+    const sec = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+}
+
+function formatBreakTime(ts){
+    return new Date(Number(ts || 0)).toLocaleTimeString("hu-HU", {
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+}
+
+function renderBreakWidget(){
+    const pill = document.getElementById("breakPill");
+    if(!pill) return;
+
+    const state = loadBreakState();
+    const remainingMs = getBreakRemainingMs(state);
+
+    pill.classList.toggle("active", Boolean(state.activeStart));
+
+    if(state.activeStart){
+        pill.textContent = "☕ SZÜNET · " + formatBreakClock(Date.now() - Number(state.activeStart));
+    }else if(remainingMs >= 0){
+        pill.textContent = "☕ " + Math.ceil(remainingMs / 60000) + "p";
+    }else{
+        pill.textContent = "☕ 0p · +" + Math.ceil(Math.abs(remainingMs) / 60000) + "p";
+    }
+
+    const overlay = document.getElementById("breakOverlay");
+    if(overlay && overlay.classList.contains("open")){
+        renderBreakModal();
+    }
+}
+
+function renderBreakModal(){
+    const content = document.getElementById("breakModalContent");
+    if(!content) return;
+
+    const state = loadBreakState();
+    const usedMs = getBreakUsedMs(state);
+    const remainingMs = getBreakRemainingMs(state);
+    const usedMin = Math.floor(usedMs / 60000);
+    const remainingMin = Math.max(0, Math.ceil(remainingMs / 60000));
+
+    let bigValue = remainingMin + " perc";
+    let bigLabel = "maradt a 60 percből";
+
+    if(state.activeStart){
+        bigValue = formatBreakClock(Date.now() - Number(state.activeStart));
+        bigLabel = "aktuális szünet";
+    }else if(remainingMs < 0){
+        bigValue = "+" + Math.ceil(Math.abs(remainingMs) / 60000) + " perc";
+        bigLabel = "kereten felül";
+    }
+
+    const rows = (state.sessions || []).slice().sort(function(a,b){
+        return Number(b.start || 0) - Number(a.start || 0);
+    }).map(function(item){
+        const durationMin = Math.max(0, Math.round((Number(item.end || 0) - Number(item.start || 0)) / 60000));
+        return `
+            <div class="breakRow">
+                <div class="breakRowText">
+                    <b>${formatBreakTime(item.start)}–${formatBreakTime(item.end)}</b> · ${durationMin} perc
+                </div>
+                <div class="breakRowActions">
+                    <button class="breakMiniBtn" onclick="editBreakSession(${Number(item.id || 0)})">✏️</button>
+                    <button class="breakMiniBtn" onclick="deleteBreakSession(${Number(item.id || 0)})">🗑️</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    content.innerHTML = `
+        <div class="breakTitle" id="breakTitle">☕ Szünetidő</div>
+        <div class="breakSummary">Felhasználva: <b>${usedMin} / ${BREAK_LIMIT_MINUTES} perc</b></div>
+
+        <div class="breakBig">
+            <div class="breakBigValue">${bigValue}</div>
+            <div class="breakBigLabel">${bigLabel}</div>
+        </div>
+
+        <button class="settingBtn active breakMainBtn" onclick="${state.activeStart ? "stopBreak()" : "startBreak()"}">
+            ${state.activeStart ? "■ Szünet vége" : "▶ Szünet indítása"}
+        </button>
+
+        <div class="breakHistoryTitle">Mai szünetek</div>
+        ${rows || '<div class="breakHistoryEmpty">Még nincs lezárt szünet.</div>'}
+
+        <button class="breakCloseBtn" onclick="closeBreakModal()">Bezárás</button>
+    `;
+}
+
+function openBreakModal(){
+    const overlay = document.getElementById("breakOverlay");
+    if(!overlay) return;
+    renderBreakModal();
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden","false");
+    ensureBreakTick();
+}
+
+function closeBreakModal(){
+    const overlay = document.getElementById("breakOverlay");
+    if(!overlay) return;
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden","true");
+}
+
+function startBreak(){
+    const state = loadBreakState();
+    if(state.activeStart) return;
+
+    state.activeStart = Date.now();
+    saveBreakState(state);
+    ensureBreakTick();
+    renderBreakWidget();
+}
+
+function stopBreak(silent){
+    const state = loadBreakState();
+    if(!state.activeStart) return;
+
+    const end = Date.now();
+    state.sessions.push({
+        id:end,
+        start:Number(state.activeStart),
+        end:end
+    });
+    state.activeStart = null;
+    saveBreakState(state);
+
+    renderBreakWidget();
+    if(!silent) renderBreakModal();
+}
+
+function editBreakSession(id){
+    const state = loadBreakState();
+    const item = (state.sessions || []).find(function(x){
+        return Number(x.id || 0) === Number(id || 0);
+    });
+    if(!item) return;
+
+    const current = Math.max(0, Math.round((Number(item.end || 0) - Number(item.start || 0)) / 60000));
+    const answer = prompt("Hány perc legyen ez a szünet?", String(current));
+    if(answer === null) return;
+
+    const minutes = Number(String(answer).replace(",", "."));
+    if(!Number.isFinite(minutes) || minutes < 0 || minutes > 180){
+        alert("0 és 180 perc közötti értéket adj meg.");
+        return;
+    }
+
+    item.end = Number(item.start || 0) + Math.round(minutes * 60000);
+    saveBreakState(state);
+    renderBreakWidget();
+    renderBreakModal();
+}
+
+function deleteBreakSession(id){
+    if(!confirm("Törlöd ezt a szünetet?")) return;
+
+    const state = loadBreakState();
+    state.sessions = (state.sessions || []).filter(function(x){
+        return Number(x.id || 0) !== Number(id || 0);
+    });
+    saveBreakState(state);
+    renderBreakWidget();
+    renderBreakModal();
+}
+
+function ensureBreakTick(){
+    if(breakTickTimer) return;
+    breakTickTimer = setInterval(function(){
+        renderBreakWidget();
+    }, 1000);
+}
 
 // Supabase online verseny mód.
 // Csak a publishable kulcs van itt. Secret/service_role kulcsot tilos index.html-be tenni.
@@ -3755,6 +4152,7 @@ function render(){
     if(sumEl) sumEl.innerText = showNumber(getDayOsszegyseg(d));
 
     renderInputHistory();
+    renderBreakWidget();
     renderBackupReminderBox();
     renderSaveSyncStatus();
 }
@@ -3771,9 +4169,15 @@ async function closePicking(){
 
     if(!confirm("Biztosan le akarod zárni a szedést?")) return;
 
-    // V3.2: Turbo módból csak valódi napzárással lehet kilépni.
-    // A PIN itt már nem napközbeni feloldás, hanem a napzárás megerősítése.
-    if(hiddenMode){
+    if(isBreakActive()){
+        if(!confirm("A szünet időmérése még fut. Leállítsam most, és folytassam a napzárást?")) return;
+        stopBreak(true);
+    }
+
+    // V3.8: napzáráskor mindig csak EGY PIN-kérés legyen.
+    // Online felhasználónál az online napzáró PIN ellenőriz, ezért Turbo nem kér külön PIN-t.
+    // Offline Turbo használatnál megmarad a helyi Turbo napzáró PIN.
+    if(hiddenMode && (!onlineUser || !onlineUser.user_id)){
         if(!hasHiddenModePin()){
             const created = await setupHiddenModePin();
             if(!created) return;
@@ -5352,9 +5756,8 @@ async function handleOnlineSubmitBeforeClose(dayData){
     }
 
     const pin = prompt(
-        "Online verseny mód aktív.\n\n" +
-        "Napzáráshoz add meg a PIN-kódod:\n" +
-        onlineUser.name
+        "Nap lezárása\n\n" +
+        "Add meg a PIN-kódod:"
     );
 
     if(pin === null){
@@ -6581,7 +6984,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.6</span>
+                <span class="onlineStatusPill ok">V3.8</span>
             </div>
         </div>
 
@@ -6676,8 +7079,29 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.6</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.8</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.8 - Egyszerűbb napzáró PIN</div>
+            <div class="menuCardBody">
+                <div>- Napzáráskor a PIN ablak már nem írja ki, hogy „Online verseny mód aktív”.</div>
+                <div>- Online használat mellett Turbo módból napzáráskor is csak egyetlen PIN-kódot kér.</div>
+                <div>- Offline Turbo használatnál továbbra is a helyi Turbo napzáró PIN védi a lezárást.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.7 - Szünetidő követő</div>
+            <div class="menuCardBody">
+                <div>- Napi 60 perces szünetkeret került az alkalmazásba.</div>
+                <div>- A főképernyőn kompakt ☕ jelző mutatja a még rendelkezésre álló időt.</div>
+                <div>- Szünet indítható és leállítható, appváltás és telefonzárás mellett is pontos marad.</div>
+                <div>- A mai szünetek külön listában láthatók, módosíthatók és törölhetők.</div>
+                <div>- Turbo módban is elérhető, de nem kapcsolódik a teljesítmény-statisztikákhoz.</div>
+                <div>- Futó szünet esetén a napzárás külön figyelmeztet.</div>
+            </div>
         </div>
 
         <div class="menuCard">
@@ -7599,6 +8023,7 @@ function deleteAllData(){
 updateHiddenModeUI();
 updateKartonModeUI();
 render();
+ensureBreakTick();
 setInterval(function(){
     renderYesterdayComparison();
     renderPerformancePattern();
