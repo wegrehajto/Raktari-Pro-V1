@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V3.4 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
+   SÚLYVADÁSZ V3.6 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -1881,7 +1881,8 @@ button:active{ transform:translateY(1px) scale(.995); }
    ========================================================= */
 body.privacyMode{
     padding-top:10px;
-    padding-bottom:16px;
+    /* V3.6: hely az alul fix menüsávnak, hogy ne takarja a napzárás gombot. */
+    padding-bottom:120px;
     min-height:100vh;
 }
 
@@ -1905,6 +1906,22 @@ body.privacyMode .bottomNav{
 
 body.privacyMode #inputHistoryBox{
     display:block !important;
+}
+
+/* V3.5: Turbo alatt kompaktabb Beviteli előzmény, hogy ne érjen rá a napzárás gombra. */
+body.privacyMode .inputHistoryCard{
+    margin-top:8px;
+    padding:10px;
+}
+body.privacyMode .historyListHeader{
+    margin-bottom:5px;
+}
+body.privacyMode .inputHistoryScroll{
+    max-height:240px;
+}
+body.privacyMode .inputEntry{
+    padding:7px 8px;
+    margin-top:5px;
 }
 
 body.privacyMode #privacyBtn,
@@ -2129,7 +2146,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V3.4 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.6 · All rights reserved.
 </div>
 
 <!-- TURBO NAPZÁRÓ PIN -->
@@ -3073,16 +3090,20 @@ function renderInputHistory(){
 
     const historyHtml = entries.map(function(e){
         const is700 = Number(e.suly || 0) > HETSZAZAS_LIMIT;
-        const kartonText = e.kartonMod ? ("beírt karton: " + showNumber(e.karton)) : ("becsült karton: " + showApprox(e.szamoltKarton));
+        // V3.6: a Beviteli előzményben Turbo alatt is a ténylegesen BEÍRT értékek látszanak,
+        // hogy egy elütést azonnal észre lehessen venni. Ez nem napi összesítés.
+        const kartonText = e.kartonMod
+            ? ("beírt karton: " + fmt(e.karton))
+            : ("becsült karton: ~" + fmt(e.szamoltKarton));
 
         return `
             <div class="inputEntry">
                 <div class="inputEntryTop">
                     <span>${e.ido || ""}${is700 ? '<span class="badge700">700-as</span>' : ''}</span>
-                    <span>${showKg(e.suly)}</span>
+                    <span>${fmt(e.suly)} kg</span>
                 </div>
                 <div class="inputEntrySub">
-                    Tétel: <b>${showNumber(e.tetel)}</b> · ${kartonText} · ~Összegység: <b>${showNumber(getEntryOsszegyseg(e))}</b>
+                    Tétel: <b>${fmt(e.tetel)}</b> · ${kartonText} · ~Összegység: <b>${fmt(getEntryOsszegyseg(e))}</b>
                 </div>
                 <div class="inputEntryActions">
                     <button class="entryActionBtn entryEditBtn" onclick="editInputEntry(${Number(e.id || 0)})">✏️ Szerkesztés</button>
@@ -6560,7 +6581,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.4</span>
+                <span class="onlineStatusPill ok">V3.6</span>
             </div>
         </div>
 
@@ -6655,8 +6676,27 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.4</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.6</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.6 - Turbo előzmény + alsó menü hely</div>
+            <div class="menuCardBody">
+                <div>- Turbo módban a Beviteli előzményben újra látszanak a ténylegesen bevitt Tétel és Súly értékek.</div>
+                <div>- Az egyes bevitelek továbbra is szerkeszthetők és törölhetők.</div>
+                <div>- A napi összesített eredmények továbbra is rejtve maradnak.</div>
+                <div>- Több alsó hely került a Turbo nézetbe, így a fix alsó menüsáv nem takarja a Szedés lezárása gombot.</div>
+            </div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.5 - Kompakt Turbo előzmény</div>
+            <div class="menuCardBody">
+                <div>- Turbo módban a Beviteli előzmény alacsonyabb és kompaktabb lett.</div>
+                <div>- A lista görgethető marad, így a szerkesztés és törlés továbbra is elérhető.</div>
+                <div>- A Szedés lezárása gombnak több hely marad, nem lóg bele az előzmény blokk.</div>
+            </div>
         </div>
 
         <div class="menuCard">
