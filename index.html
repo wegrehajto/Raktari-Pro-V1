@@ -7241,10 +7241,21 @@ async function adminUserAction(btn){
 function renderBeallitasok(){
     const vacationList = getVacationDays();
     const vacationListHtml = vacationList.length ? vacationList.map(function(v){
-        const sickList = getSickDays();
+        return `
+            <div class="vacationMini">
+                <div><b>${v.datum}</b></div>
+                <div class="small">Szabadság nap</div>
+                <button class="deleteMiniBtn" onclick="deleteVacationDay(${Number(v.id || 0)})">🗑️ Törlés</button>
+            </div>
+        `;
+    }).join("") : `<div class="empty">Még nincs rögzített szabadság.</div>`;
+
+    const sickList = getSickDays();
     const sickStatsForSettings = getSickStats(getDayStats());
     const sickListHtml = sickList.length ? sickList.map(function(v){
-        const stat = sickStatsForSettings.find(function(x){ return Number(x.id || 0) === Number(v.id || 0); });
+        const stat = sickStatsForSettings.find(function(x){
+            return Number(x.id || 0) === Number(v.id || 0);
+        });
         return `
             <div class="vacationMini">
                 <div><b>${v.datum}</b></div>
@@ -7255,24 +7266,13 @@ function renderBeallitasok(){
     }).join("") : `<div class="empty">Még nincs rögzített táppénzes nap.</div>`;
 
     return `
-            <div class="vacationMini">
-                <div><b>${v.datum}</b></div>
-                <div class="small">Szabadság nap</div>
-                <button class="deleteMiniBtn" onclick="deleteVacationDay(${Number(v.id || 0)})">
-                    🗑️ Törlés
-                </button>
-            </div>
-        `;
-    }).join("") : `<div class="empty">Még nincs rögzített szabadság.</div>`;
-
-    return `
         <div class="menuCard">
             <div class="proCardHeader">
                 <div>
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.10</span>
+                <span class="onlineStatusPill ok">V3.10.1</span>
             </div>
         </div>
 
@@ -7379,7 +7379,7 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.10</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.10.1</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
         </div>
 
