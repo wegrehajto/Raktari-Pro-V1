@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V3.8 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
+   SÚLYVADÁSZ V3.9 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -2017,6 +2017,43 @@ body.privacyMode .turboFeedback.show{
 }
 
 
+/* V3.9 — korábbi, le nem zárt napok */
+.unclosedDayBox{
+    display:none;
+    margin:0 0 12px;
+}
+.unclosedDayCard{
+    padding:11px 12px;
+    border:1px solid #4a4140;
+    border-radius:12px;
+    background:#252120;
+    color:#d8d1cd;
+}
+.unclosedDayTitle{
+    font-size:13px;
+    font-weight:900;
+}
+.unclosedDaySub{
+    margin-top:4px;
+    font-size:11px;
+    line-height:1.4;
+    color:#aaa29d;
+}
+.unclosedDayBtn{
+    width:100%;
+    margin-top:8px;
+    padding:9px 10px;
+    border-radius:9px;
+    border:1px solid #554a47;
+    background:#302927;
+    color:#ddd6d2;
+    font-size:12px;
+    font-weight:900;
+}
+body.privacyMode #unclosedDayBox{
+    display:block !important;
+}
+
 /* V3.7 — 60 perces szünetidő követő */
 .breakPill{
     width:100%;
@@ -2259,6 +2296,8 @@ body.privacyMode #breakPill{
 ☕ 60p
 </button>
 
+<div id="unclosedDayBox" class="unclosedDayBox"></div>
+
 <div id="privacyHint" class="privacyHint" style="display:none;">
 A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </div>
@@ -2291,7 +2330,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V3.8 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.9 · All rights reserved.
 </div>
 
 <!-- SZÜNETIDŐ -->
@@ -2714,6 +2753,62 @@ function ensureTodayData(){
 }
 
 ensureTodayData();
+
+/* V3.9 — régebbi, nem üres és még le nem zárt napi adatok felismerése. */
+function dayHasWork(d){
+    if(!d || typeof d !== "object") return false;
+    return Number(d.tetel || 0) !== 0 ||
+           Number(d.karton || 0) !== 0 ||
+           Number(d.suly || 0) !== 0 ||
+           Number(d.rendeles || 0) !== 0 ||
+           Number(d.hetszazas || 0) !== 0 ||
+           (Array.isArray(d.bevitelek) && d.bevitelek.length > 0);
+}
+
+function getUnclosedDays(){
+    const closedDates = new Set(
+        (Array.isArray(closedPickings) ? closedPickings : [])
+            .map(function(r){ return String((r && r.datum) || ""); })
+            .filter(Boolean)
+    );
+
+    return Object.keys(data || {})
+        .filter(function(dateKey){
+            return dateKey < today &&
+                   !closedDates.has(dateKey) &&
+                   dayHasWork(data[dateKey]);
+        })
+        .sort();
+}
+
+function formatWorkDate(dateKey){
+    const parts = String(dateKey || "").split("-");
+    if(parts.length !== 3) return dateKey;
+    return parts[0] + "." + parts[1] + "." + parts[2] + ".";
+}
+
+function renderUnclosedDayBox(){
+    const box = document.getElementById("unclosedDayBox");
+    if(!box) return;
+
+    const days = getUnclosedDays();
+    if(!days.length){
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+    }
+
+    const first = days[0];
+    const extra = days.length > 1 ? (" · +" + (days.length - 1) + " további") : "";
+    box.style.display = "block";
+    box.innerHTML = `
+        <div class="unclosedDayCard">
+            <div class="unclosedDayTitle">⚠️ Lezáratlan nap: ${formatWorkDate(first)}${extra}</div>
+            <div class="unclosedDaySub">A mentett adatok megvannak. Utólag lezárhatod a megfelelő dátummal.</div>
+            <button class="unclosedDayBtn" onclick="closeUnclosedDay('${first}')">Korábbi nap lezárása</button>
+        </div>
+    `;
+}
 
 function saveData(){
     localStorage.setItem("data", JSON.stringify(data));
@@ -4153,8 +4248,71 @@ function render(){
 
     renderInputHistory();
     renderBreakWidget();
+    renderUnclosedDayBox();
     renderBackupReminderBox();
     renderSaveSyncStatus();
+}
+
+async function closeUnclosedDay(dateKey){
+    ensureTodayData();
+
+    if(!dateKey || dateKey >= today || !data[dateKey] || !dayHasWork(data[dateKey])){
+        alert("Ehhez a naphoz már nincs lezáratlan adat.");
+        renderUnclosedDayBox();
+        return;
+    }
+
+    const d = data[dateKey];
+
+    if(!confirm(
+        formatWorkDate(dateKey) + " lezárása?\n\n" +
+        "A nap a saját eredeti dátumával kerül az Előzményekbe" +
+        (onlineUser && onlineUser.user_id ? " és az online rendszerbe." : ".")
+    )) return;
+
+    // Ugyanaz az egyetlen online napzáró PIN, mint a mai napnál.
+    // Offline használatnál nincs szükség külön PIN-re, mert ez nem Turbo-feloldás.
+    const onlineOk = await handleOnlineSubmitBeforeClose(d, dateKey);
+    if(!onlineOk) return;
+
+    const now = new Date();
+    const record = {
+        id:Date.now(),
+        datum:dateKey,
+        ido:now.toLocaleTimeString("hu-HU", {hour:"2-digit", minute:"2-digit"}),
+        tetel:Number(d.tetel || 0),
+        karton:Number(d.karton || 0),
+        suly:Number(d.suly || 0),
+        rendeles:Number(d.rendeles || 0),
+        hetszazas:Number(d.hetszazas || 0),
+        hetszazasSzeriaMax:Number(d.hetszazasSzeriaMax || d.hetszazasSzeria || 0),
+        hatarido6000:d.hatarido6000 === true,
+        hatarido6000Ido:d.hatarido6000Ido || "",
+        kartonSzamitas:Number(d.karton || 0) > 0 ? "beirt_vagy_vegyes" : "becsult",
+        szamoltKarton:getDaySzamoltKarton(d),
+        becsultKarton:getDaySzamoltKarton(d),
+        osszegyseg:getDayOsszegyseg(d),
+        bevitelek:Array.isArray(d.bevitelek) ? d.bevitelek.slice() : []
+    };
+
+    closedPickings.push(record);
+    closedPickings.sort(function(a,b){
+        return String(a.datum || "").localeCompare(String(b.datum || "")) ||
+               Number(a.id || 0) - Number(b.id || 0);
+    });
+    saveClosed();
+
+    // A régi aktív napi rekordot csak sikeres online beküldés és helyi archiválás után ürítjük.
+    data[dateKey] = createEmptyDay();
+    saveData();
+
+    render();
+    refreshActiveMenu();
+
+    alert(
+        formatWorkDate(dateKey) + " sikeresen lezárva.\n\n" +
+        "Az adat bekerült az Előzmények közé a helyes dátummal."
+    );
 }
 
 async function closePicking(){
@@ -5750,7 +5908,7 @@ function logoutOnlineUser(){
     setTimeout(function(){ setOnlineMessage(onlineUiNotice, onlineUiNoticeType); }, 80);
 }
 
-async function handleOnlineSubmitBeforeClose(dayData){
+async function handleOnlineSubmitBeforeClose(dayData, workDate){
     if(!onlineUser || !onlineUser.user_id){
         return true;
     }
@@ -5774,7 +5932,7 @@ async function handleOnlineSubmitBeforeClose(dayData){
         const result = await supabaseRpc("sv_submit_day", {
             p_user_id:onlineUser.user_id,
             p_pin:pin.trim(),
-            p_work_date:today,
+            p_work_date:(workDate || today),
             p_tetel:Number(dayData.tetel || 0),
             p_suly:Number(dayData.suly || 0),
             p_karton:Number(dayData.karton || 0),
@@ -6984,7 +7142,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.8</span>
+                <span class="onlineStatusPill ok">V3.9</span>
             </div>
         </div>
 
@@ -7079,8 +7237,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.8</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.9</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.9 - Lezáratlan napok mentése</div>
+            <div class="menuCardBody">
+                <div>- Az app felismeri a korábbi dátumon megmaradt, le nem zárt szedéseket.</div>
+                <div>- A főképernyőn figyelmeztetés jelenik meg, és a régi nap utólag lezárható.</div>
+                <div>- A lezárás az eredeti munkanap dátumával kerül az Előzményekbe és online használatnál az online rendszerbe.</div>
+                <div>- Az adat csak sikeres lezárás után ürül ki.</div>
+            </div>
         </div>
 
         <div class="menuCard">
