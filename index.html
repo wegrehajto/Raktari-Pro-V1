@@ -1573,7 +1573,7 @@ button:active{
 
 
 /* =========================================================
-   SÚLYVADÁSZ V3.9 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
+   SÚLYVADÁSZ V3.10 — TURBO FIGYELMEZTETŐ FŐVERZIÓ
    Visszafogott, alacsony kontrasztú vizuális réteg.
    Saját korábbi munkanapokból számolt analitikával, kompakt főoldali kijelzéssel.
    ========================================================= */
@@ -2330,7 +2330,7 @@ A statisztikai számok el vannak rejtve, de amit beírsz, azt látod.
 </button>
 
 <div class="creatorFooter">
-    © 2026 Horváth Balázs · Súlyvadász V3.9 · All rights reserved.
+    © 2026 Horváth Balázs · Súlyvadász V3.10 · All rights reserved.
 </div>
 
 <!-- SZÜNETIDŐ -->
@@ -2660,6 +2660,7 @@ function loadJson(key, fallback){
 let data = loadJson("data", {});
 let closedPickings = loadJson("closedPickings", []);
 let vacationDays = loadJson("vacationDays", []);
+let sickDays = loadJson("sickDays", []);
 let monthlyArchives = loadJson("monthlyArchives", []);
 let onlineUser = loadJson("onlineUser", null);
 let adminSession = loadJson("adminSession", null);
@@ -2681,6 +2682,10 @@ if(!Array.isArray(closedPickings)){
 
 if(!Array.isArray(vacationDays)){
     vacationDays = [];
+}
+
+if(!Array.isArray(sickDays)){
+    sickDays = [];
 }
 
 if(!Array.isArray(monthlyArchives)){
@@ -2820,6 +2825,10 @@ function saveClosed(){
 
 function saveVacationDays(){
     localStorage.setItem("vacationDays", JSON.stringify(vacationDays));
+}
+
+function saveSickDays(){
+    localStorage.setItem("sickDays", JSON.stringify(sickDays));
 }
 
 function saveMonthlyArchives(){
@@ -4935,6 +4944,11 @@ function addVacationDay(){
         return;
     }
 
+    if(getSickDays().some(function(v){ return v.datum === datum; })){
+        alert("Ez a nap már táppénzként rögzítve van.");
+        return;
+    }
+
     if(hasClosedDataForDate(datum)){
         alert("Erre a napra már van lezárt szedés. Előbb töröld azt az Előzményekből, ha szabadságként akarod rögzíteni.");
         return;
@@ -4978,6 +4992,101 @@ function deleteVacationDay(id){
     saveVacationDays();
     refreshActiveMenu();
     alert("Szabadság nap törölve.");
+}
+
+/* V3.10 — Táppénz: a szabadsághoz hasonló külön nap,
+   de a havi munkanapi átlag várható fizetésének 60%-ával számol. */
+function getSickDays(){
+    return sickDays
+        .filter(function(v){ return v && v.datum; })
+        .map(function(v){
+            return {
+                id:Number(v.id || 0),
+                datum:String(v.datum || ""),
+                createdAt:v.createdAt || ""
+            };
+        })
+        .sort(function(a,b){ return b.datum.localeCompare(a.datum); });
+}
+
+function getSickStats(days){
+    return getSickDays().map(function(v){
+        const haviAtlag = getWorkdayAveragePayForMonth(v.datum, days);
+        return {
+            id:v.id,
+            datum:v.datum,
+            honap:String(v.datum || "").slice(0,7),
+            haviNapiAtlagFizetes:haviAtlag,
+            napiTappenz:Math.round(haviAtlag * 0.60)
+        };
+    });
+}
+
+function getSickMonthStats(items){
+    const map = {};
+    items.forEach(function(v){
+        const honap = v.honap || String(v.datum || "").slice(0,7);
+        if(!map[honap]) map[honap] = {honap:honap, napok:0, fizetes:0};
+        map[honap].napok++;
+        map[honap].fizetes += Number(v.napiTappenz || 0);
+    });
+    return Object.values(map).sort(function(a,b){ return b.honap.localeCompare(a.honap); });
+}
+
+function getSickPayForMonth(stats, monthKey){
+    const m = stats.find(function(x){ return x.honap === monthKey; });
+    return m ? Number(m.fizetes || 0) : 0;
+}
+
+function getSickDaysForMonth(stats, monthKey){
+    const m = stats.find(function(x){ return x.honap === monthKey; });
+    return m ? Number(m.napok || 0) : 0;
+}
+
+function addSickDay(){
+    const input = document.getElementById("sickDate");
+    const datum = input && input.value ? input.value : getTodayKey();
+
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(datum)){
+        alert("Válassz ki egy érvényes dátumot.");
+        return;
+    }
+    if(getSickDays().some(function(v){ return v.datum === datum; })){
+        alert("Ez a nap már táppénzként rögzítve van.");
+        return;
+    }
+    if(getVacationDays().some(function(v){ return v.datum === datum; })){
+        alert("Ez a nap már szabadságként rögzítve van.");
+        return;
+    }
+    if(hasClosedDataForDate(datum)){
+        alert("Erre a napra már van lezárt szedés. Előbb töröld azt az Előzményekből, ha táppénzként akarod rögzíteni.");
+        return;
+    }
+    if(hasActiveDataForDate(datum)){
+        alert("Erre a napra van aktív, le nem zárt adat. Előbb zárd le vagy töröld, utána rögzíts táppénzt.");
+        return;
+    }
+    if(!confirm("Biztosan táppénzként rögzíted ezt a napot?\n\n" + datum + "\n\nElszámolás: havi napi átlag 60%-a")) return;
+
+    sickDays.push({id:Date.now(), datum:datum, createdAt:new Date().toISOString()});
+    saveSickDays();
+    refreshActiveMenu();
+    alert("Táppénzes nap rögzítve.");
+}
+
+function deleteSickDay(id){
+    const numericId = Number(id || 0);
+    const item = getSickDays().find(function(v){ return Number(v.id || 0) === numericId; });
+    if(!item){
+        alert("Nem találom ezt a táppénzes napot.");
+        return;
+    }
+    if(!confirm("Biztosan törlöd ezt a táppénzes napot?\n\n" + item.datum)) return;
+    sickDays = sickDays.filter(function(v){ return Number(v.id || 0) !== numericId; });
+    saveSickDays();
+    refreshActiveMenu();
+    alert("Táppénzes nap törölve.");
 }
 
 function getMonthStats(days){
@@ -5116,6 +5225,8 @@ function getMonthSummaryData(monthKey){
     const months = getMonthStats(days);
     const vacationStats = getVacationStats(days);
     const vacationMonthStats = getVacationMonthStats(vacationStats);
+    const sickStats = getSickStats(days);
+    const sickMonthStats = getSickMonthStats(sickStats);
     const m = months.find(function(x){ return x.honap === monthKey; }) || {
         honap:monthKey,
         napok:0,
@@ -5131,6 +5242,8 @@ function getMonthSummaryData(monthKey){
 
     const vacationCount = getVacationDaysForMonth(vacationMonthStats, monthKey);
     const vacationPay = getVacationPayForMonth(vacationMonthStats, monthKey);
+    const sickCount = getSickDaysForMonth(sickMonthStats, monthKey);
+    const sickPay = getSickPayForMonth(sickMonthStats, monthKey);
     const workPay = getBecsultFizetes(m.osszegyseg);
 
     return {
@@ -5138,6 +5251,7 @@ function getMonthSummaryData(monthKey){
         label:getMonthLabel(monthKey),
         napok:Number(m.napok || 0),
         szabadsag:Number(vacationCount || 0),
+        tappenz:Number(sickCount || 0),
         suly:Number(m.suly || 0),
         tetel:Number(m.tetel || 0),
         karton:Number(m.karton || 0),
@@ -5148,7 +5262,8 @@ function getMonthSummaryData(monthKey){
         osszegyseg:Number(m.osszegyseg || 0),
         munkabolFizetes:workPay,
         szabadsagFizetes:vacationPay,
-        osszesFizetes:workPay + vacationPay,
+        tappenzFizetes:sickPay,
+        osszesFizetes:workPay + vacationPay + sickPay,
         atlagSuly:m.napok ? Math.round(Number(m.suly || 0) / m.napok) : 0,
         atlagTetel:m.napok ? Math.round(Number(m.tetel || 0) / m.napok) : 0,
         atlagOsszegyseg:m.napok ? Math.round(Number(m.osszegyseg || 0) / m.napok) : 0,
@@ -5164,6 +5279,7 @@ function renderMonthClosingCard(monthKey){
             <div class="menuCardTitle">📦 Hónapzáró összesítő - ${s.label}</div>
             <div class="menuLine"><span>Lezárt munkanapok</span><b>${fmt(s.napok)}</b></div>
             <div class="menuLine"><span>Szabadság napok</span><b>${fmt(s.szabadsag)}</b></div>
+            <div class="menuLine"><span>Táppénzes napok</span><b>${fmt(s.tappenz)}</b></div>
             <div class="menuLine"><span>Súly</span><b>${fmt(s.suly)} kg</b></div>
             <div class="menuLine"><span>Tétel</span><b>${fmt(s.tetel)}</b></div>
             <div class="menuLine"><span>700-as</span><b>${fmt(s.hetszazas)}</b></div>
@@ -5171,6 +5287,7 @@ function renderMonthClosingCard(monthKey){
             <div class="menuLine"><span>~Összegység</span><b>${fmt(s.osszegyseg)}</b></div>
             <div class="menuLine moneyLine"><span>Munkából várható</span><b>${showFt(s.munkabolFizetes)}</b></div>
             <div class="menuLine moneyLine"><span>Szabadság becsült</span><b>${showFt(s.szabadsagFizetes)}</b></div>
+            <div class="menuLine moneyLine"><span>Táppénz becsült (60%)</span><b>${showFt(s.tappenzFizetes)}</b></div>
             <div class="menuLine moneyLine"><span>Havi összes várható</span><b>${showFt(s.osszesFizetes)}</b></div>
             <div class="menuLine"><span>Átlag súly / munkanap</span><b>${fmt(s.atlagSuly)} kg</b></div>
             <div class="menuLine"><span>Átlag tétel / munkanap</span><b>${fmt(s.atlagTetel)}</b></div>
@@ -7124,7 +7241,20 @@ async function adminUserAction(btn){
 function renderBeallitasok(){
     const vacationList = getVacationDays();
     const vacationListHtml = vacationList.length ? vacationList.map(function(v){
+        const sickList = getSickDays();
+    const sickStatsForSettings = getSickStats(getDayStats());
+    const sickListHtml = sickList.length ? sickList.map(function(v){
+        const stat = sickStatsForSettings.find(function(x){ return Number(x.id || 0) === Number(v.id || 0); });
         return `
+            <div class="vacationMini">
+                <div><b>${v.datum}</b></div>
+                <div class="small">🤒 Táppénz · havi átlag 60%: ${showFt(stat ? stat.napiTappenz : 0)}</div>
+                <button class="deleteMiniBtn" onclick="deleteSickDay(${Number(v.id || 0)})">🗑️ Törlés</button>
+            </div>
+        `;
+    }).join("") : `<div class="empty">Még nincs rögzített táppénzes nap.</div>`;
+
+    return `
             <div class="vacationMini">
                 <div><b>${v.datum}</b></div>
                 <div class="small">Szabadság nap</div>
@@ -7142,7 +7272,7 @@ function renderBeallitasok(){
                     <div class="proCardTitle">⚙️ Beállítások</div>
                     <div class="proCardSub">Rendezettebb, összecsukható app beállítások.</div>
                 </div>
-                <span class="onlineStatusPill ok">V3.9</span>
+                <span class="onlineStatusPill ok">V3.10</span>
             </div>
         </div>
 
@@ -7209,6 +7339,18 @@ function renderBeallitasok(){
         </details>
 
         <details class="settingsDetails">
+            <summary>🤒 Táppénz</summary>
+            <div class="settingsDetailsBody">
+                <div class="settingNote">
+                    A táppénz a szabadsághoz hasonlóan nem számít bele a teljesítmény-statisztikákba. A várható fizetéshez az adott hónap lezárt munkanapjainak napi átlagának 60%-ával számol.
+                </div>
+                <input id="sickDate" class="settingInput" type="date" value="${getTodayKey()}">
+                <button class="settingBtn" onclick="addSickDay()">🤒 Táppénzes nap hozzáadása</button>
+                <div style="margin-top:10px;">${sickListHtml}</div>
+            </div>
+        </details>
+
+        <details class="settingsDetails">
             <summary>📦 Havi archiválás</summary>
             <div class="settingsDetailsBody">
                 <div class="settingNote">
@@ -7237,8 +7379,18 @@ function renderChangelog(){
     return `
         <div class="menuCard">
             <div class="menuCardTitle">⚖️ Súlyvadász - Changelog</div>
-            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.9</b></div>
+            <div class="menuLine"><span>Jelenlegi verzió</span><b>V3.10</b></div>
             <div class="menuLine"><span>Állapot</span><b class="good">Stabil főverzió</b></div>
+        </div>
+
+        <div class="menuCard">
+            <div class="menuCardTitle">V3.10 - Táppénz</div>
+            <div class="menuCardBody">
+                <div>- Új Táppénz funkció került a Beállításokba a Szabadsághoz hasonló működéssel.</div>
+                <div>- A táppénzes nap a saját hónap lezárt munkanapjainak napi átlagfizetésének 60%-ával számol.</div>
+                <div>- A havi összesítő külön mutatja a táppénzes napokat és a becsült táppénz összegét.</div>
+                <div>- A táppénzes napok bekerülnek a biztonsági mentésbe és visszatöltésbe is.</div>
+            </div>
         </div>
 
         <div class="menuCard">
@@ -7875,6 +8027,7 @@ function getBackupPayload(){
         data:data,
         closedPickings:closedPickings,
         vacationDays:vacationDays,
+        sickDays:sickDays,
         monthlyArchives:monthlyArchives,
         onlineUser:onlineUser,
         settings:{
@@ -7941,6 +8094,7 @@ function importBackupFromFile(input){
             const restoredData = backup.data || (backup.keys ? backup.keys.data : null);
             const restoredClosed = backup.closedPickings || (backup.keys ? backup.keys.closedPickings : null);
             const restoredVacation = backup.vacationDays || (backup.keys ? backup.keys.vacationDays : []);
+            const restoredSick = backup.sickDays || (backup.keys ? backup.keys.sickDays : []);
             const restoredArchives = backup.monthlyArchives || (backup.keys ? backup.keys.monthlyArchives : []);
             const restoredOnlineUser = backup.onlineUser || null;
             const restoredSettings = backup.settings || {};
@@ -7955,6 +8109,10 @@ function importBackupFromFile(input){
 
             if(restoredVacation && !Array.isArray(restoredVacation)){
                 throw new Error("Hibás a szabadság napok listája.");
+            }
+
+            if(restoredSick && !Array.isArray(restoredSick)){
+                throw new Error("Hibás a táppénzes napok listája.");
             }
 
             if(restoredArchives && !Array.isArray(restoredArchives)){
@@ -7975,6 +8133,7 @@ function importBackupFromFile(input){
             data = restoredData;
             closedPickings = restoredClosed;
             vacationDays = restoredVacation || [];
+            sickDays = restoredSick || [];
             monthlyArchives = restoredArchives || [];
             onlineUser = restoredOnlineUser && restoredOnlineUser.user_id ? restoredOnlineUser : null;
             // A Turbo PIN lenyomat szándékosan nem része a mentésnek.
@@ -7988,6 +8147,7 @@ function importBackupFromFile(input){
             saveData();
             saveClosed();
             saveVacationDays();
+            saveSickDays();
             saveMonthlyArchives();
 
             localStorage.setItem("hiddenMode", hiddenMode ? "1" : "0");
