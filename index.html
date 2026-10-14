@@ -6780,6 +6780,40 @@ function renderAdminVisibilityCard(settings){
     `;
 }
 
+function renderAdminTurboCard(){
+    const active = Boolean(hiddenMode);
+    return `
+        <div class="menuCard">
+            <div class="menuCardTitle">⚡ Saját Turbo mód adminfeloldása</div>
+            <div class="menuLine"><span>Saját Turbo mód</span><b>${active ? "Aktív – napzárásig" : "Nincs bekapcsolva"}</b></div>
+            <div class="settingNote">Ez a művelet kizárólag ezen a készüléken, a saját Turbo módodat oldja fel. A rögzített szedési adatok és a napzáró PIN nem törlődnek.</div>
+            ${active ? `<button class="settingBtn danger" onclick="adminUnlockOwnTurbo()">🔓 Saját Turbo mód feloldása</button>` : `<button class="settingBtn" disabled>✓ Nincs aktív Turbo mód</button>`}
+        </div>
+    `;
+}
+
+function adminUnlockOwnTurbo(){
+    if(!getAdminToken()){
+        alert("Ehhez admin belépés szükséges.");
+        return;
+    }
+    if(!hiddenMode){
+        alert("A saját Turbo mód jelenleg nincs bekapcsolva.");
+        refreshActiveMenu();
+        return;
+    }
+    const confirmed = confirm("Feloldod a saját Turbo módot napzárás előtt?\n\nA teljes nézet visszaáll ezen a készüléken. A rögzített adatok és a Turbo PIN megmaradnak.");
+    if(!confirmed) return;
+
+    hiddenMode = false;
+    localStorage.setItem("hiddenMode", "0");
+    updateHiddenModeUI();
+    updateKartonModeUI();
+    render();
+    refreshActiveMenu();
+    alert("A saját Turbo mód feloldva.");
+}
+
 function renderAdminDashboard(result){
     const live = Array.isArray(result.live) ? result.live : [];
     const daily = Array.isArray(result.daily) ? result.daily : [];
@@ -6789,6 +6823,7 @@ function renderAdminDashboard(result){
 
     return `
         ${renderAdminVisibilityCard(result.settings || onlineSettings)}
+        ${renderAdminTurboCard()}
 
         <div class="menuCard">
             <div class="menuCardTitle">📊 Admin gyors összesítő</div>
